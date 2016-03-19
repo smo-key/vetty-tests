@@ -7,12 +7,6 @@ from pygame.locals import *
 import time
 from time import strftime
 import threading
-#from signal import alarm, signal, SIGALRM, SIGKILL
-#
-#def alarm_handler(signum, frame):
-#        pygame.quit()
-#        sys.exit(0)
-#signal(SIGKILL, alarm_handler)
 
 GAMMA = 2
 COLOR_BLUE900 = pygame.Color(13,71,161).correct_gamma(GAMMA)
