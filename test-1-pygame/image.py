@@ -64,7 +64,7 @@ def drawBigIcon(string):
 def update():
 	pygame.display.update()
 
-myimage = pygame.image.load("/home/pi/vetty/boot.png")
+myimage = pygame.image.load("/home/pi/vetty/boot.png").convert()
 imagerect = myimage.get_rect()
 lcd.blit(myimage, imagerect)
 pygame.display.update()
