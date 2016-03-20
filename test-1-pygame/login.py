@@ -9,6 +9,7 @@ from time import strftime
 import threading
 import sys
 import traceback
+import math
 
 #from signal import alarm, signal, SIGALRM, SIGKILL
 #
@@ -23,12 +24,14 @@ COLOR_BLUE800 = pygame.Color(21, 101, 192).correct_gamma(GAMMA)
 COLOR_WHITE = pygame.Color(255,255,255)
 COLOR_BLACK = pygame.Color(0,0,0)
 COLOR_GRAY600 = pygame.Color(117, 117, 117)
+COLOR_GREEN500 = pygame.Color(76, 175, 80)
 COLOR_BG = COLOR_BLACK
 
 #Initialization
 os.putenv('SDL_FBDEV', '/dev/fb0')
+os.putenv('SDL_VIDEODRIVER', 'fbcon')
 #os.putenv('SDL_MOUSEDRV', 'TSLIB')
-#os.putenv('SDL_MOUSEDEV', '/dev/input/touchscreen')
+#os.putenv('SDL_MOUSEDEV', '/dev/input/event0')
 pygame.init()
 
 #LCD Fill test
@@ -151,7 +154,7 @@ class thread_touch(StoppableThread):
 			ret = scanForTouch()
 			if (touch_state is 0) and (ret[1] is 1):
 				#If the touch response is too fast, we both press and release
-				ret = (ret[0], 2)
+				ret = (touch_pos, 2)
 			if (ret[1] is not -1):		
 				#Just made sure that we don't override any state if there is one
 				touch_pos = ret[0]
@@ -181,12 +184,14 @@ def exitThreads():
                 t.join()
         print "Exited."
 
-def ui_clear(color):
-	r = (10, 20, 40, 70, 110, 160, 240)
+def ui_clear(color, pos=(240,160)):
+	r = (10, 20, 40, 70, 110, 160, 240, 320)
+	dist = math.sqrt((240-pos[0])*(240-pos[0]) + (160-pos[1])*(160-pos[1]))
 	for i in range(0, len(r)):
-		pygame.draw.circle(SURFACE, color, (240, 160), r[i])
+		radius = int(r[i] + dist)
+		pygame.draw.circle(SURFACE, color, pos, radius)
 		update()
-		time.sleep(0.01)
+		time.sleep(0.05)
 	lcd.fill(color)
 	update()
 
@@ -207,11 +212,22 @@ def ui_numpad_key(i, color, bgcolor=COLOR_BLUE900):
         str_icon[1].center = pos
         lcd.blit(str_icon[0], str_icon[1])
 
-def ui_numpad_circle(i, color):
-	pass
+def ui_numpad_disp(done, color, pos=0, colordone=COLOR_GREEN500, colorbg=None):
+	#pos = (int(round(240 + (i-2.5)*40)), 25)
+	#pygame.draw.circle(SURFACE, color, pos, 20)
+	width = 40
+	for i in range(0, 6):
+		pos = (int(round(240 + (i-2.5)*(width+5))), 10)
+		rect = Rect(pos[0]-(width/2), pos[1], width, 20)
+		if colorbg is not None:
+			lcd.fill(colorbg, rect)
+		lcd.fill(color, rect)
 
 def ui_numpad():
-	for alpha in (100, 200, 230, 255):
+	for alpha in (50, 100, 150, 200, 230, 255):
+		blue = COLOR_BLUE800
+		blue.a = alpha
+		ui_numpad_disp(0, blue, 0, colorbg=COLOR_BLUE900)
 		for i in range(0,11):
 			ui_numpad_key(i, Color(255, 255, 255, alpha))
 		gray = COLOR_GRAY600
@@ -223,9 +239,9 @@ def ui_numpad():
 	update()
 	
 	key = 0
-	#while key = 0
-
-	time.sleep(3)
+	#while key is 0
+	while True:
+		time.sleep(3)
 
 def ui_main():
 	
@@ -238,17 +254,18 @@ def ui_main():
         	updateTimeBottom()
                 update()
 		if (has_touch() is True):
-			print "TOUCH: " + str(get_touch())
 			state = 1
 			break
                 time.sleep(0.2)
 	if state is 1:
-		ui_clear(COLOR_BLUE900)
+		event = get_touch()
+		print event[0]
+		ui_clear(COLOR_BLACK, event[0])
 		ui_numpad()
 
 try:
 	ui_main()
-except Exception as e:
+except (Exception,KeyboardInterrupt,SystemExit) as e:
 	traceback.print_exc()
 	exitThreads()
 exitThreads()
