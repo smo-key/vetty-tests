@@ -4,12 +4,12 @@
 #include <stdio.h>
 #include "touch.h"
 #include "touch.c"
-#include "framebuffer.c"
 #include <signal.h>
+#include <stdlib.h>
 
-#define SAMPLE_AMOUNT 2
-#define SCREEN_WIDTH 480
-#define SCREEN_HEIGHT 320
+#define SAMPLE_AMOUNT 1
+#define DEFAULT_SCREEN_WIDTH 480
+#define DEFAULT_SCREEN_HEIGHT 320
 
 void  INThandler(int sig)
 {
@@ -29,8 +29,6 @@ int main(int argc, char *argv[])
 	int screenXmax, screenXmin;
 	int screenYmax, screenYmin;
 
-	float scaleXvalue, scaleYvalue;
-
 	int rawX, rawY, rawPressure, scaledX, scaledY;
 
 	int Xaverage = 0;
@@ -39,7 +37,7 @@ int main(int argc, char *argv[])
 
 	if (openTouchScreen() == 1)
 	{
-		printf("ERROR: Error reading touchscreen.");
+		printf("ERROR: Error reading touchscreen.\n");
 		return 1;
 	}
 
@@ -47,8 +45,8 @@ int main(int argc, char *argv[])
 
 	if (argc < 3)
 	{
-		xres = SCREEN_WIDTH;
-		yres = SCREEN_HEIGHT;
+		xres = DEFAULT_SCREEN_WIDTH;
+		yres = DEFAULT_SCREEN_HEIGHT;
 	}
 	else
 	{
@@ -60,6 +58,8 @@ int main(int argc, char *argv[])
 	//scaleYvalue = ((float)screenYmax-screenYmin) / yres;
 
 	int sample, x;
+
+	printf("INIT: SUCCESS!\n");
 
 	while(1){
 		for (sample = 0; sample < SAMPLE_AMOUNT; sample++){

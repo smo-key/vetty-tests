@@ -21,6 +21,9 @@
     Software Foundation, Inc., 59 Temple Place - Suite 330, Boston,
     MA 02111-1307, USA
 */
+
+#include <unistd.h>
+
 #define KWHT  "\x1B[37m"
 #define KYEL  "\x1B[33m"
 
@@ -31,12 +34,14 @@ int openTouchScreen()
         if ((fd = open("/dev/input/event0", O_RDONLY)) < 0) {
                 return 1;
         }
+	else
+		return 0;
 }
 
 
 void getTouchScreenDetails(int *screenXmin,int *screenXmax,int *screenYmin,int *screenYmax)
 {
-	unsigned short id[4];
+	//unsigned short id[4];
         unsigned long bit[EV_MAX][NBITS(KEY_MAX)];
         char name[256] = "Unknown";
         int abs[6] = {0};
@@ -63,12 +68,12 @@ void getTouchScreenDetails(int *screenXmin,int *screenXmax,int *screenYmin,int *
                                                         if ((k < 3) || abs[k]){
                                                                 //printf("     %s %6d\n", absval[k], abs[k]);
                                                                 if (j == 0){
-                                                                        if (absval[k] == "Min  ") *screenXmin =  abs[k];
-                                                                        if (absval[k] == "Max  ") *screenXmax =  abs[k];
+                                                                        if (strcmp(absval[k], "Min  ") == 0) *screenXmin =  abs[k];
+                                                                        if (strcmp(absval[k], "Max  ") == 0) *screenXmax =  abs[k];
                                                                 }
                                                                 if (j == 1){
-                                                                        if (absval[k] == "Min  ") *screenYmin =  abs[k];
-                                                                        if (absval[k] == "Max  ") *screenYmax =  abs[k];
+                                                                        if (strcmp(absval[k], "Min  ") == 0) *screenYmin =  abs[k];
+                                                                        if (strcmp(absval[k], "Max  ") == 0) *screenYmax =  abs[k];
                                                                 }
                                                         }
                                                 }
@@ -90,14 +95,18 @@ void getTouchSample(int *rawX, int *rawY, int *rawPressure)
 	rb=read(fd,ev,sizeof(struct input_event)*64);
         for (i = 0;  i <  (rb / sizeof(struct input_event)); i++){
               	if (ev[i].type ==  EV_SYN)
-			return;
-                         //printf("Event type is %s%s%s = Start of New Event\n",KYEL,events[ev[i].type],KWHT);
+			continue;
+			//printf("EVENT: END\n");
+                        //printf("Event type is %s%s%s = Start of New Event\n",KYEL,events[ev[i].type],KWHT);
+			//return;
                 else if (ev[i].type == EV_KEY && ev[i].code == 330 && ev[i].value == 1)
+			printf("KEY: DOWN\n");
                         //printf("Event type is %s%s%s & Event code is %sTOUCH(330)%s & Event value is %s1%s = Touch Starting\n", KYEL,events[ev[i].type],KWHT,KYEL,KWHT,KYEL,KWHT);
-			return;
+			//return;
                 else if (ev[i].type == EV_KEY && ev[i].code == 330 && ev[i].value == 0)
+			printf("KEY: UP\n");
 			//printf("Event type is %s%s%s & Event code is %sTOUCH(330)%s & Event value is %s0%s = Touch Finished\n", KYEL,events[ev[i].type],KWHT,KYEL,KWHT,KYEL,KWHT);
-			return;
+			//return;
                 else if (ev[i].type == EV_ABS && ev[i].code == 0 && ev[i].value > 0){
                         //printf("Event type is %s%s%s & Event code is %sX(0)%s & Event value is %s%d%s\n", KYEL,events[ev[i].type],KWHT,KYEL,KWHT,KYEL,ev[i].value,KWHT);
 			*rawX = ev[i].value;
@@ -111,4 +120,6 @@ void getTouchSample(int *rawX, int *rawY, int *rawPressure)
 			*rawPressure = ev[i].value;
 		}
 	}
+	//if ((rb / sizeof(struct input_event)) > 0)
+	//	printf("EVENT: END\n");
 }
