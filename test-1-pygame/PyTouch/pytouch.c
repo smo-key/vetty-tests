@@ -6,19 +6,37 @@
 #include "touch.c"
 #include <signal.h>
 #include <stdlib.h>
+#include <unistd.h>
+#include <pthread.h>
 
 #define SAMPLE_AMOUNT 1
 #define DEFAULT_SCREEN_WIDTH 480
 #define DEFAULT_SCREEN_HEIGHT 320
 
+pthread_t thread = NULL;
+
 void  INThandler(int sig)
 {
         signal(sig, SIG_IGN);
+	pthread_cancel(thread);
         exit(0);
+}
+
+void* keepaliveThread(void *arg)
+{
+	printf("TIMER STARTED\n");
+	int* t_ptr = (int *)arg;
+	while(1)
+	{
+		sleep(*t_ptr);
+		printf("KEEPALIVE\n");
+	}
+	return NULL;
 }
 
 int main(int argc, char *argv[])
 {
+	setvbuf(stdout, (char *) NULL, _IOLBF, 0); /* make line buffered stdout */
 	signal(SIGINT, INThandler);
 
 	int xres, yres;
@@ -33,7 +51,7 @@ int main(int argc, char *argv[])
 
 	int Xaverage = 0;
 	int Yaverage = 0;
-
+	int keepalive = 1; //Keepalive timer
 
 	if (openTouchScreen() == 1)
 	{
@@ -52,6 +70,23 @@ int main(int argc, char *argv[])
 	{
 		xres = atoi(argv[1]);
 		yres = atoi(argv[2]);
+	}
+	if (argc >= 4)
+	{
+		//Add specific device
+	}
+	if (argc >= 5)
+	{
+		keepalive = atoi(argv[5]);
+	}
+
+	if (keepalive > 0)
+	{
+		if (pthread_create(&thread, NULL, keepaliveThread, &keepalive))
+		{
+			printf("ERROR: Cannot create keepalive thread");
+			return 1;
+		}
 	}
 
 	//scaleXvalue = ((float)screenXmax-screenXmin) / xres;
