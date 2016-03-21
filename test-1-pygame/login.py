@@ -10,6 +10,8 @@ import threading
 import sys
 import traceback
 import math
+from PyTouch import pytouch
+from PyTouch.pytouch import TouchThread as TouchThread
 
 #from signal import alarm, signal, SIGALRM, SIGKILL
 #
@@ -80,17 +82,6 @@ def update():
 def flip():
 	pygame.display.flip()
 
-def scanForTouch():
-	# Scan touchscreen events
-    	for event in pygame.event.get():
-        	if(event.type is MOUSEBUTTONDOWN):
-			pos = pygame.mouse.get_pos()
-			return (pos, 0)
-		elif(event.type is MOUSEBUTTONUP):
-            		pos = pygame.mouse.get_pos()
-           		return (pos, 1)
-	return ((-1, -1), -1)
-
 def enable_vsync():
     if sys.platform != 'darwin':
         return
@@ -104,73 +95,12 @@ def enable_vsync():
     except:
         print "Unable to set vsync mode, using driver defaults"
 
-thread_time_run = True;
-touch_pos = None
-touch_state = -1 #-1: no touch, 0: pressed, 1: released, 2: pressed and releasd 
-touch_lock = threading.Lock()
 threads = []
 
-class StoppableThread(threading.Thread):
-	"""Thread class with a stop() method. The thread itself has to check regularly for the stopped() condition."""
-	def __init__(self):
-        	super(StoppableThread, self).__init__()
-        	self._stop = threading.Event()
-
-    	def stop(self):
-        	self._stop.set()
-
-    	def stopped(self):
-        	return self._stop.isSet()
-
-def has_touch():
-	global touch_pos
-	if touch_pos is not None:
-		return True
-	return False
-
-def get_touch():
-	global touch_pos
-	global touch_state
-	touch_lock.acquire()
-	ret = None
-	if touch_pos is not None:
-		ret = (touch_pos, touch_state)
-	if touch_state == 1:
-		touch_state = -1
-	elif touch_state == 0:
-		touch_state = 1
-	touch_pos = None
-	touch_lock.release()
-	return ret
-
-class thread_touch(StoppableThread):
-        def __init__(self):
-		super(thread_touch, self).__init__()
-        def run(self):
-		global touch_pos
-		global touch_state
-		while self.stopped() is False:
-			touch_lock.acquire()
-			ret = scanForTouch()
-			if (touch_state is 0) and (ret[1] is 1):
-				#If the touch response is too fast, we both press and release
-				ret = (touch_pos, 2)
-			if (ret[1] is not -1):		
-				#Just made sure that we don't override any state if there is one
-				touch_pos = ret[0]
-				touch_state = ret[1]
-				if (touch_pos is (-1,-1)):
-					touch_pos = None
-				else:
-					print ret
-			touch_lock.release()
-			time.sleep(0.05)
-		print "Exiting touch thread."
-
 #Start touch event thread
-touch_thread = thread_touch()
-touch_thread.start()
-threads.append(touch_thread)
+touch = TouchThread(debug=True)
+touch.start()
+threads.append(touch)
 
 #Enable VSync
 enable_vsync()
@@ -240,8 +170,8 @@ def ui_numpad():
 	
 	key = 0
 	#while key is 0
-	while True:
-		time.sleep(3)
+	#while True:
+	time.sleep(5)
 
 def ui_main():
 	
@@ -253,14 +183,14 @@ def ui_main():
 	while state is 0:
         	updateTimeBottom()
                 update()
-		if (has_touch() is True):
+		if (touch.hasUpdate() is True):
 			state = 1
 			break
                 time.sleep(0.2)
 	if state is 1:
-		event = get_touch()
-		print event[0]
-		ui_clear(COLOR_BLACK, event[0])
+		event = touch.getState()
+		event = (event[0],event[1])
+		ui_clear(COLOR_BLUE900, event)
 		ui_numpad()
 
 try:
