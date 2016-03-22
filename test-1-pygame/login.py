@@ -98,9 +98,17 @@ def enable_vsync():
 threads = []
 
 #Start touch event thread
-touch = TouchThread(debug=True)
+touch = TouchThread(debug=True, device="/dev/input/event0")
 touch.start()
 threads.append(touch)
+
+#Wait for touch thread
+while(not touch.isInitialized()):
+	if (touch.hasError()):
+		exit(1)
+	time.sleep(0.1)
+
+print "READY!"
 
 #Enable VSync
 enable_vsync()
@@ -186,7 +194,7 @@ def ui_main():
 		if (touch.hasUpdate() is True):
 			state = 1
 			break
-                time.sleep(0.2)
+                time.sleep(0.1)
 	if state is 1:
 		event = touch.getState()
 		event = (event[0],event[1])
