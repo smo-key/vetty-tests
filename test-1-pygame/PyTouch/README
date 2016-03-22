@@ -1,7 +1,0 @@
-	A simple program that demonstrates how to program for a
-        touchscreen. Specifically on the Raspberry Pi.
-        This prgram can be used for most Linux based systems.
-        
-	For more details: ozzmaker.com
-
-        Compile buttonExample with "gcc -g -o buttonExample  buttonExample.c -l wiringPi"
