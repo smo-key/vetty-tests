@@ -43,7 +43,7 @@ if __name__ == '__main__':
         else:
             FPS.delay(1) #wait 1 second
             counter = counter + 1
-    
+    fps.SetLED(False)    
     fps.Close() # Closes serial connection
     pass
 

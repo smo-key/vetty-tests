@@ -1,7 +1,12 @@
+#!/usr/bin/env python
+#-*- coding: utf-8 -*-
 '''
+Originaly
 Created on 21/03/2014
-
+by
 @author: Jean Machuca <correojean@gmail.com> @jeanmachuca
+
+modified version by Simon Jucker <simon.jucker@etml-es.ch> on october 2015
 '''
 
 import os
@@ -10,9 +15,10 @@ from serial.tools import list_ports
 import time
 import binascii
 
+content = 0
 def delay(seconds):
     '''
-    wait a number of secons 
+    wait a number of secons
     '''
     time.sleep(seconds)
 
@@ -31,7 +37,7 @@ def serial_ports():
         # unix
         _serial_ports = [port[0] for port in list_ports.comports()]
     return _serial_ports
-           
+
 def devices(index=None):
     '''
     device's list
@@ -43,7 +49,8 @@ def devices(index=None):
 if os.name == 'nt':
     DEVICE_NAME = 'COM3'
 else:
-    DEVICE_NAME = '/dev/cu.usbserial-A601EQ14'  #default device to use
+    #DEVICE_NAME = '/dev/cu.usbserial-A601EQ14'  #default device to use
+    DEVICE_NAME = '/dev/ttyAMA0'
 
 def isFingerPrintConnected(is_com=True):
     '''
@@ -60,32 +67,32 @@ class Packet:
     COMMAND_START_CODE_2 = 0xAA;    # Static byte to mark the beginning of a command packet    -    never changes
     COMMAND_DEVICE_ID_1  = 0x01;    # Device ID Byte 1 (lesser byte)                            -    theoretically never changes
     COMMAND_DEVICE_ID_2  = 0x00;    # Device ID Byte 2 (greater byte)                            -    theoretically never changes
-    
+
     def GetHighByte(self, w):
         '''
         Returns the high byte from a word
         '''
         return (w>>8)&0x00FF
-    
+
     def GetLowByte(self, w):
         '''
-        Returns the low byte from a word        
+        Returns the low byte from a word
         '''
         return w&0x00FF
-    
+
     def CalculateCheckSum(self,bytearr):
         return sum(map(ord,bytes(bytearr)))
-    
+
     def serializeToSend(self,bytearr):
         return ' '.join(binascii.hexlify(ch) for ch in bytes(bytearr))
-    
+
 
 class Command_Packet(Packet):
     '''
         Command Packet Class
         Used to build the serial message
     '''
-    
+
     command = bytearray(2)
     cmd = ''
     commands = {
@@ -122,7 +129,7 @@ class Command_Packet(Packet):
                     'Ack'                     : 0x30,        # Acknowledge.
                     'Nack'                    : 0x31         # Non-acknowledge
                 }
-    
+
 
     def __init__(self,*args,**kwargs):
         '''
@@ -134,21 +141,21 @@ class Command_Packet(Packet):
         if self.UseSerialDebug:
             print 'Command: %s' % commandName
         self.cmd = self.commands[commandName]
-        
+
     UseSerialDebug = True
     Parameter = bytearray(4)
-    
-    
-    
+
+
+
     def GetPacketBytes(self):
         '''
         returns the 12 bytes of the generated command packet
         remember to call delete on the returned array
         '''
-        
+
         self.command[0] = self.GetLowByte(self.cmd)
         self.command[1] = self.GetHighByte(self.cmd)
-        
+
         packetbytes= bytearray(12)
         packetbytes[0] = self.COMMAND_START_CODE_1
         packetbytes[1] = self.COMMAND_START_CODE_2
@@ -164,13 +171,13 @@ class Command_Packet(Packet):
         packetbytes[10] = self.GetLowByte(chksum)
         packetbytes[11] = self.GetHighByte(chksum)
 
-        return packetbytes;        
-    
+        return packetbytes;
+
     def ParameterFromInt(self, i):
         '''
         Converts the int to bytes and puts them into the paramter array
         '''
-        
+
         self.Parameter[0] = (i & 0x000000ff);
         self.Parameter[1] = (i & 0x0000ff00) >> 8;
         self.Parameter[2] = (i & 0x00ff0000) >> 16;
@@ -182,7 +189,7 @@ class Response_Packet(Packet):
     '''
         Response Packet Class
     '''
-    
+
     errors = {
                     'NO_ERROR'                      : 0x0000,    # Default value. no error
                     'NACK_TIMEOUT'                  : 0x1001,    # Obsolete, capture timeout
@@ -203,15 +210,15 @@ class Response_Packet(Packet):
                     'NACK_CAPTURE_CANCELED'         : 0x1010,    # Obsolete, The capturing is canceled
                     'NACK_INVALID_PARAM'            : 0x1011,    # Invalid parameter
                     'NACK_FINGER_IS_NOT_PRESSED'    : 0x1012,    # Finger is not pressed
-                    'INVALID'                       : 0XFFFF     # Used when parsing fails          
+                    'INVALID'                       : 0XFFFF     # Used when parsing fails
               }
-    
+
     def __init__(self,_buffer=None,UseSerialDebug=False):
         '''
         creates and parses a response packet from the finger print scanner
         '''
         self.UseSerialDebug= UseSerialDebug
-        
+
         if not (_buffer is None ):
             self.RawBytes = _buffer
             self._lastBuffer = bytes(_buffer)
@@ -225,8 +232,13 @@ class Response_Packet(Packet):
                 self.ParameterBytes[3] = _buffer[7]
                 self.ResponseBytes[0]  = _buffer[8]
                 self.ResponseBytes[1]  = _buffer[9]
-                self.Error = self.ParseFromBytes(self.GetHighByte(_buffer[5]),self.GetLowByte(_buffer[4]))
-        
+                #self.Error = self.ParseFromBytes(self.GetHighByte(_buffer[5]),self.GetLowByte(_buffer[4]))
+                if _buffer[5] == 0x10:
+                    for key, value in self.errors.items():
+                        if value == self.IntFromParameter():
+                            self.Error = key
+
+
     _lastBuffer = bytes()
     RawBytes = bytearray(12)
     ParameterBytes=bytearray(4)
@@ -234,8 +246,8 @@ class Response_Packet(Packet):
     ACK = False
     Error = None
     UseSerialDebug = True
-    
-    
+
+
     def ParseFromBytes(self,high,low):
         '''
         parses bytes into one of the possible errors from the finger print scanner
@@ -246,8 +258,8 @@ class Response_Packet(Packet):
                 errorIndex = self.errors.values().index(low)
                 e = self.errors.keys()[errorIndex]
         return e
-    
-    
+
+
     def IntFromParameter(self):
         retval = 0;
         retval = (retval << 8) + self.ParameterBytes[3];
@@ -263,10 +275,10 @@ class SerialCommander:
     '''
     def __serialize_args_hex__(self,*arg,**kwargs):
         return bytes(bytearray([v for v in kwargs.values()]))
-    
+
     def serializeToSend(self,bytearr):
         return ' '.join(binascii.hexlify(ch) for ch in bytes(bytearr))
-    
+
     def unserializeFromRead(self,char_readed,bytearr):
         bytearr.append(char_readed)
         return bytearr
@@ -278,7 +290,7 @@ def connect(device_name=None,baud=None,timeout=None,is_com=True):
     else:
         DEVICE_NAME = device_name
     if baud is None:
-        baud=9600
+        baud  = 9600
     if timeout is None:
         timeout = 10000
     if isFingerPrintConnected(is_com):
@@ -291,8 +303,8 @@ def connect(device_name=None,baud=None,timeout=None,is_com=True):
             pass
     return _ser
 
-#BAUD = 115200
-BAUD = 9600
+BAUD = 115200
+#BAUD = 9600
 
 class FPS_GT511C3(SerialCommander):
     _serial = None
@@ -300,27 +312,27 @@ class FPS_GT511C3(SerialCommander):
     _device_name = None
     _baud = None
     _timeout= None
-    
+
     '''
-    # Enables verbose debug output using hardware Serial 
+    # Enables verbose debug output using hardware Serial
     '''
     UseSerialDebug = True
-    
+
     def __init__(self,device_name=None,baud=None,timeout=None,is_com=True):
         '''
             Creates a new object to interface with the fingerprint scanner
         '''
         self._device_name = device_name
-        self._baud=baud
+        self._baud = baud
         self._timeout = timeout
-        self._serial = connect(self._device_name,baud,timeout,is_com=is_com)
+        self._serial = connect(device_name,baud,timeout,is_com=is_com)
         if not self._serial is None:
             delay(0.1)
             self.Open()
         elif self.UseSerialDebug:
             print '[FPS_GT511C3] No es posible conectar con el dispositivo %s' % self._device_name
-            
-     
+
+
     def Open(self):
         '''
             Initialises the device and gets ready for commands
@@ -334,8 +346,8 @@ class FPS_GT511C3(SerialCommander):
         rp = self.GetResponse()
         del packetbytes
         return rp.ACK
-        
-    
+
+
     def Close(self):
         '''
              Does not actually do anything (according to the datasheet)
@@ -353,7 +365,7 @@ class FPS_GT511C3(SerialCommander):
             self._serial.close()
         del packetbytes
         return rp.ACK
-    
+
     def SetLED(self,on=True):
         '''
              Turns on or off the LED backlight
@@ -373,7 +385,7 @@ class FPS_GT511C3(SerialCommander):
         del rp
         del packetbytes
         return retval
-    
+
     def ChangeBaudRate(self,baud):
         '''
              Changes the baud rate of the connection
@@ -400,7 +412,7 @@ class FPS_GT511C3(SerialCommander):
             del rp
             del packetbytes
         return retval
-    
+
     def GetEnrollCount(self):
         '''
              Gets the number of enrolled fingerprints
@@ -418,7 +430,7 @@ class FPS_GT511C3(SerialCommander):
         del rp
         del packetbytes
         return retval
-    
+
     def CheckEnrolled(self,ID):
         '''
              checks to see if the ID number is in use or not
@@ -435,7 +447,7 @@ class FPS_GT511C3(SerialCommander):
         retval = rp.ACK
         del rp
         return retval
-    
+
     def EnrollStart(self,ID):
         '''
              Starts the Enrollment Process
@@ -453,14 +465,9 @@ class FPS_GT511C3(SerialCommander):
         self.SendCommand(packetbytes, 12)
         del packetbytes
         rp = self.GetResponse()
-        retval = 0
+        retval = "ACK"
         if not rp.ACK:
-            if rp.Error == rp.errors['NACK_DB_IS_FULL']:
-                retval = 1
-            elif rp.Error == rp.errors['NACK_INVALID_POS']:
-                retval = 2
-            elif rp.Error == rp.errors['NACK_IS_ALREADY_USED']:
-                retval = 3
+            retval = rp.Error
         del rp
         return retval
 
@@ -468,7 +475,7 @@ class FPS_GT511C3(SerialCommander):
     def Enroll1(self):
         '''
              Gets the first scan of an enrollment
-             Return: 
+             Return:
                 0 - ACK
                 1 - Enroll Failed
                 2 - Bad finger
@@ -480,19 +487,25 @@ class FPS_GT511C3(SerialCommander):
         self.SendCommand(packetbytes, 12)
         del packetbytes
         rp = self.GetResponse()
-        retval = rp.IntFromParameter()
-        retval = 3 if retval < 200 else 0
+        #retval = rp.IntFromParameter()
+        #retval = 3 if retval < 200 else 0
+        #if not rp.ACK:
+            #print rp.Error
+            #if rp.Error == rp.errors['NACK_ENROLL_FAILED']:
+                #retval = 1
+            #elif rp.Error == rp.errors['NACK_BAD_FINGER']:
+                #retval = 2
+        #return 0 if rp.ACK else retval
+        retval = "ACK"
         if not rp.ACK:
-            if rp.Error == rp.errors['NACK_ENROLL_FAILED']:
-                retval = 1
-            elif rp.Error == rp.errors['NACK_BAD_FINGER']:
-                retval = 2
-        return 0 if rp.ACK else retval
-    
+            retval = rp.Error
+        del rp
+        return retval
+
     def Enroll2(self):
         '''
              Gets the Second scan of an enrollment
-             Return: 
+             Return:
                 0 - ACK
                 1 - Enroll Failed
                 2 - Bad finger
@@ -504,21 +517,26 @@ class FPS_GT511C3(SerialCommander):
         self.SendCommand(packetbytes, 12)
         del packetbytes
         rp = self.GetResponse()
-        retval = rp.IntFromParameter()
-        retval = 3 if retval < 200 else 0
+        #retval = rp.IntFromParameter()
+        #retval = 3 if retval < 200 else 0
+        #if not rp.ACK:
+            #if rp.Error == rp.errors['NACK_ENROLL_FAILED']:
+                #retval = 1
+            #elif rp.Error == rp.errors['NACK_BAD_FINGER']:
+                #retval = 2
+        #return 0 if rp.ACK else retval
+        retval = "ACK"
         if not rp.ACK:
-            if rp.Error == rp.errors['NACK_ENROLL_FAILED']:
-                retval = 1
-            elif rp.Error == rp.errors['NACK_BAD_FINGER']:
-                retval = 2
-        return 0 if rp.ACK else retval
-        
-    
+            retval = rp.Error
+        del rp
+        return retval
+
+
     def Enroll3(self):
         '''
              Gets the Third scan of an enrollment
              Finishes Enrollment
-             Return: 
+             Return:
                 0 - ACK
                 1 - Enroll Failed
                 2 - Bad finger
@@ -530,16 +548,21 @@ class FPS_GT511C3(SerialCommander):
         self.SendCommand(packetbytes, 12)
         del packetbytes
         rp = self.GetResponse()
-        retval = rp.IntFromParameter()
-        retval = 3 if retval < 200 else 0
+        #retval = rp.IntFromParameter()
+        #retval = 3 if retval < 200 else 0
+        #if not rp.ACK:
+            #if rp.Error == rp.errors['NACK_ENROLL_FAILED']:
+                #retval = 1
+            #elif rp.Error == rp.errors['NACK_BAD_FINGER']:
+                #retval = 2
+        #return 0 if rp.ACK else retval
+        retval = "ACK"
         if not rp.ACK:
-            if rp.Error == rp.errors['NACK_ENROLL_FAILED']:
-                retval = 1
-            elif rp.Error == rp.errors['NACK_BAD_FINGER']:
-                retval = 2
-        return 0 if rp.ACK else retval
-    
-    
+            retval = rp.Error
+        del rp
+        return retval
+
+
     def IsPressFinger(self):
         '''
              Checks to see if a finger is pressed on the FPS
@@ -558,9 +581,9 @@ class FPS_GT511C3(SerialCommander):
         del packetbytes
         del cp
         return retval
-    
+
     def DeleteID(self,ID):
-        '''
+        '''L
              Deletes the specified ID (enrollment) from the database
              Returns: true if successful, false if position invalid
         '''
@@ -574,7 +597,7 @@ class FPS_GT511C3(SerialCommander):
         del packetbytes
         del cp
         return retval
-    
+
     def DeleteAll(self):
         '''
              Deletes all IDs (enrollments) from the database
@@ -589,7 +612,7 @@ class FPS_GT511C3(SerialCommander):
         del packetbytes
         del cp
         return retval
-    
+
     def Verify1_1(self,ID):
         '''
              Checks the currently pressed finger against a specific ID
@@ -617,7 +640,7 @@ class FPS_GT511C3(SerialCommander):
         del packetbytes
         del cp
         return retval
-    
+
     def Identify1_N(self):
         '''
              Checks the currently pressed finger against all enrolled fingerprints
@@ -636,8 +659,8 @@ class FPS_GT511C3(SerialCommander):
         del packetbytes
         del cp
         return retval
-    
-    
+
+
     def CaptureFinger(self,highquality=True):
         '''
              Captures the currently pressed finger into onboard ram
@@ -655,7 +678,8 @@ class FPS_GT511C3(SerialCommander):
         del packetbytes
         del cp
         return retval
-    
+
+
     def GetImage(self):
         '''
              Gets an image that is 258x202 (52116 bytes) and returns it in 407 Data_Packets
@@ -669,8 +693,8 @@ class FPS_GT511C3(SerialCommander):
         retval = rp.ACK
         return retval
 
-    
-       
+
+
     def GetRawImage(self):
         '''
              Gets an image that is qvga 160x120 (19200 bytes) and returns it in 150 Data_Packets
@@ -685,14 +709,14 @@ class FPS_GT511C3(SerialCommander):
         rp = self.GetResponse()
         retval = rp.ACK
         return retval
-    
+
     def GetTemplate(self, ID):
         '''
-    
+
              Gets a template from the fps (498 bytes) in 4 Data_Packets
              Use StartDataDownload, and then GetNextDataPacket until done
              Parameter: 0-199 ID number
-             Returns: 
+             Returns:
                 0 - ACK Download starting
                 1 - Invalid position
                 2 - ID not used (no template to download
@@ -709,13 +733,13 @@ class FPS_GT511C3(SerialCommander):
             elif rp.Error == rp.errors['NACK_IS_NOT_USED']:
                 retval = 2
         return retval
-    
+
     '''
-         Uploads a template to the fps 
+         Uploads a template to the fps
          Parameter: the template (498 bytes)
          Parameter: the ID number to upload
          Parameter: Check for duplicate fingerprints already on fps
-         Returns: 
+         Returns:
             0-199 - ID duplicated
             200 - Uploaded ok (no duplicate if enabled)
             201 - Invalid position
@@ -725,7 +749,7 @@ class FPS_GT511C3(SerialCommander):
     def SetTemplate(self,tmplt,ID,duplicateCheck):
         cp = Command_Packet('SetTemplate',UseSerialDebug=self.UseSerialDebug)
         cp.ParameterFromInt(ID)
-        
+
 
          Commands that are not implemented (and why)
          VerifyTemplate1_1 - Couldn't find a good reason to implement this on an arduino
@@ -746,8 +770,8 @@ class FPS_GT511C3(SerialCommander):
              Not implemented due to memory restrictions on the arduino
              may revisit this if I find a need for it
             void StartDataDownload();
-    
-             Returns the next data packet 
+
+             Returns the next data packet
              Not implemented due to memory restrictions on the arduino
              may revisit this if I find a need for it
             Data_Packet GetNextDataPacket();
@@ -761,29 +785,39 @@ class FPS_GT511C3(SerialCommander):
         else:
             if self.UseSerialDebug:
                 print '[SendCommand] No es posible escribir en %s' % self._device_name
-    
+
     def GetResponse(self):
         '''
         Gets the response to the command from the software serial channel (and waits for it)
         '''
-        interval = 0.1
+        attempt = 0
+        interval = 0.15
         delay(interval)
         if self._serial is None:
             rp = Response_Packet()
             print '[GetResponse] No es posible leer desde: %s' % self._device_name
         else:
+            while self._serial.inWaiting() < 12:
+                print "incomplete response in buffer"
+                attempt += 1
+                delay(interval)
+                if attempt > 10:
+                    print "connexion error with FPS"
             r = bytearray(self._serial.read(self._serial.inWaiting()))
             rp = Response_Packet(r,self.UseSerialDebug)
-        
-        if rp.ACK:
-            delay(interval)
-            r2 = bytearray(self._serial.read(self._serial.inWaiting()))
-            rp2 = Response_Packet(r2,self.UseSerialDebug)
-            while str(rp2._lastBuffer).__len__()>0:
-                rp.RawBytes.extend(rp2.RawBytes)
-                rp._lastBuffer += rp2._lastBuffer
-                delay(interval)
-                r2 = bytearray(self._serial.read(self._serial.inWaiting()))
-                rp2 = Response_Packet(r2,self.UseSerialDebug)
+
+        #if rp.ACK:
+            #print "-----------------------noACK"
+            #delay(interval)
+            #r2 = bytearray(self._serial.read(self._serial.inWaiting()))
+            #rp2 = Response_Packet(r2,self.UseSerialDebug)
+            #while str(rp2._lastBuffer).__len__()>0:
+                #rp.RawBytes.extend(rp2.RawBytes)
+                #rp._lastBuffer += rp2._lastBuffer
+                #delay(interval)
+                #r2 = bytearray(self._serial.read(self._serial.inWaiting()))
+                #rp2 = Response_Packet(r2,self.UseSerialDebug)
+
+
         self._lastResponse = rp
         return rp
