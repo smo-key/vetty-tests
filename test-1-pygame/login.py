@@ -12,6 +12,7 @@ import traceback
 import math
 from PyTouch import pytouch
 from PyTouch.pytouch import TouchThread as TouchThread
+from timeit import default_timer as timer
 
 #from signal import alarm, signal, SIGALRM, SIGKILL
 #
@@ -23,6 +24,8 @@ from PyTouch.pytouch import TouchThread as TouchThread
 GAMMA = 2
 COLOR_BLUE900 = pygame.Color(13,71,161).correct_gamma(GAMMA)
 COLOR_BLUE800 = pygame.Color(21, 101, 192).correct_gamma(GAMMA)
+COLOR_RED900 = pygame.Color(191,54,12).correct_gamma(GAMMA)
+COLOR_RED800 = pygame.Color(216,67,21).correct_gamma(GAMMA)
 COLOR_WHITE = pygame.Color(255,255,255)
 COLOR_BLACK = pygame.Color(0,0,0)
 COLOR_GRAY600 = pygame.Color(117, 117, 117)
@@ -141,7 +144,7 @@ def ui_clear(color=COLOR_BLUE900, pos=(240,160)):
 	lcd.fill(color)
 	update()
 
-def ui_numpad_key(i, color, bgcolor=COLOR_BLUE900, touchbackcolor=COLOR_BLUE900, touchcolor=COLOR_BLUE800, touched=False):
+def ui_numpad_key(i, color, bgcolor=COLOR_BLUE900, touchcolor=COLOR_BLUE800, touched=False):
 	if i is -1: return
 
 	btn_exit = u"\uf156"
@@ -181,7 +184,6 @@ def ui_numpad_key(i, color, bgcolor=COLOR_BLUE900, touchbackcolor=COLOR_BLUE900,
 		str_icon = font.render(str, fgcolor=color, bgcolor=bgcolor, size=40)
         	str_icon[1].center = pos
         	lcd.blit(str_icon[0], str_icon[1])
-		update()
 
 
 def ui_numpad_disp(done, color, pos=0, colordone=COLOR_GREEN500, colorbg=None):
@@ -219,6 +221,56 @@ def ui_numpad_getkey(pos):
 			key = i
 	return key
 
+def ui_numpad_loop(bigstart,color,colorback):
+	key = -1
+	text = "" 
+	while True:
+                start = timer()
+                while touch.hasUpdate() is False:
+                        usleep(10000) #10ms
+                        if (timer() - start > 15): return None
+                        if (timer() - bigstart > 120): return None
+                event = touch.getState()
+                pos = (event[0], event[1])
+                action = event[2] #1=pressed, 2=released
+                pressed = (action is 1) or (action is 3)
+                if (pressed):
+                        key = ui_numpad_getkey(pos)
+                        print "User Key: " + str(key)
+                        if key is -1: #no key
+                                continue
+                        if (key is 9 and len(text) > 0):
+                                key = 12
+                        if (key is 11 and len(text) is 0):
+                                ui_numpad_key(key,COLOR_GRAY600,color,colorback)
+                                continue
+                        else:
+                                ui_numpad_key(key,Color(255,255,255),color,colorback,touched=True)
+                        if (key is 10):
+                                text = text + "0"
+                        elif (key is 12):
+                                text = text[:-1]
+                        elif (key is 9):
+                                return None
+                        elif (key is 11):
+                                if (len(text) is 0):
+                                        continue
+                                return text
+                        else:
+                                text = text + str(key + 1)
+                        #update display upon keypress
+                        ui_numpad_disp(len(text), colorback, 0, colordone=Color(255,255,255), colorbg=color)
+                        if (len(text) > 0):
+                                ui_numpad_key(12, Color(255,255,255),color,colorback)
+                                ui_numpad_key(11, Color(255,255,255),color,colorback)
+                        else:
+                                ui_numpad_key(9, Color(255,255,255),color,colorback)
+                                ui_numpad_key(11, COLOR_GRAY600,color,colorback)
+                        update()
+                        if (len(text) >= 6):
+                                return text
+
+
 def ui_numpad():
 	for alpha in (50, 100, 150, 200, 230, 255):
 		blue = COLOR_BLUE800
@@ -229,53 +281,27 @@ def ui_numpad():
 		gray = COLOR_GRAY600
 		gray.a = alpha
 		ui_numpad_key(11, gray)
+		update()
 		time.sleep(0.01)
-	
-	key = -1
-	text = ""
+	bigstart = timer()	
+	text = ui_numpad_loop(bigstart, COLOR_BLUE900, COLOR_BLUE800)
 	while True:
-		while touch.hasUpdate() is False:
-			usleep(10000) #10ms
-		event = touch.getState()
-		pos = (event[0], event[1])
-		action = event[2] #1=pressed, 2=released
-                pressed = (action is 1) or (action is 3)
-		if (pressed):
-			key = ui_numpad_getkey(pos)
-			print "User Key: " + str(key)
-			if key is -1: #no key
-				continue
-			if (key is 9 and len(text) > 0):
-				key = 12
-			if (key is 11 and len(text) is 0):
-				ui_numpad_key(key,COLOR_GRAY600)
-				continue
-			else:
-				ui_numpad_key(key,Color(255,255,255),touched=True)
-			if (key is 10):
-				text = text + "0"
-			elif (key is 12):
-				text = text[:-1]
-			elif (key is 9):
-				return
-			elif (key is 11):
-				if (len(text) is 0):
-					continue
-				return				
-			else:
-				text = text + str(key + 1)
-			#update display upon keypress
-			ui_numpad_disp(len(text), blue, 0, colordone=Color(255,255,255), colorbg=COLOR_BLUE900)
-			if (len(text) > 0):
-				ui_numpad_key(12, Color(255,255,255))
-				ui_numpad_key(11, Color(255,255,255))	
-			else:
-				ui_numpad_key(9, Color(255,255,255))
-				ui_numpad_key(11, COLOR_GRAY600)
-			update()
-			if (len(text) >= 6):
-				return
+		#empty?
+		if (text is None):
+			return False
+		#correct?
+		if (text == "12345"):
+			return True
+		#incorrect
+		lcd.fill(COLOR_RED900)
+		ui_numpad_disp(0, COLOR_RED800, 0, colorbg=COLOR_RED900)
+        	for i in range(0,11):
+               		ui_numpad_key(i, Color(255, 255, 255, alpha), COLOR_RED900)
+        	ui_numpad_key(11, COLOR_GRAY600, COLOR_RED900)
+		update()
 
+		#repeat
+		text = ui_numpad_loop(bigstart, COLOR_RED900, COLOR_RED800)
 
 def ui_main():
 	clearScreen(COLOR_BLUE900)
@@ -294,7 +320,7 @@ def ui_main():
 					state = 1
 		if state is 1:
 			ui_clear(COLOR_BLUE900, touch_coord())
-			ui_numpad()
+			result = ui_numpad()
 			ui_clear(COLOR_BLUE900, touch_coord())
 			state = -1
 		usleep(10000) #100ms
