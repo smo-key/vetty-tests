@@ -29,6 +29,8 @@ COLOR_GRAY600 = pygame.Color(117, 117, 117)
 COLOR_GREEN500 = pygame.Color(76, 175, 80)
 COLOR_BG = COLOR_BLACK
 
+usleep = lambda x: time.sleep(x/1000000.0)
+
 #Initialization
 os.putenv('SDL_FBDEV', '/dev/fb0')
 os.putenv('SDL_VIDEODRIVER', 'fbcon')
@@ -110,6 +112,12 @@ while(not touch.isInitialized()):
 
 print "READY!"
 
+def touch_coord():
+	if (not touch.isInitialized() or touch.hasError()):
+		return (240, 160)
+	state = touch.getState()
+	return (state[0], state[1])
+
 #Enable VSync
 enable_vsync()
 
@@ -122,7 +130,7 @@ def exitThreads():
                 t.join()
         print "Exited."
 
-def ui_clear(color, pos=(240,160)):
+def ui_clear(color=COLOR_BLUE900, pos=(240,160)):
 	r = (10, 20, 40, 70, 110, 160, 240, 320)
 	dist = math.sqrt((240-pos[0])*(240-pos[0]) + (160-pos[1])*(160-pos[1]))
 	for i in range(0, len(r)):
@@ -133,22 +141,48 @@ def ui_clear(color, pos=(240,160)):
 	lcd.fill(color)
 	update()
 
-def ui_numpad_key(i, color, bgcolor=COLOR_BLUE900):
+def ui_numpad_key(i, color, bgcolor=COLOR_BLUE900, touchbackcolor=COLOR_BLUE900, touchcolor=COLOR_BLUE800, touched=False):
+	if i is -1: return
+
 	btn_exit = u"\uf156"
         btn_backspace = u"\uf06e"
         btn_check = u"\uf12c"
-        btn_n = ('1', '2', '3', '4', '5', '6', '7', '8', '9', btn_exit, '0', btn_check)
-        btn_icon = (0,0,0,0,0,0,0,0,0,1,0,1)
-
-        str = btn_n[i]
+        btn_n = ('1', '2', '3', '4', '5', '6', '7', '8', '9', btn_exit, '0', btn_check, btn_backspace)
+        btn_icon = (0,0,0,0,0,0,0,0,0,1,0,1,1)
+	
+        font = FONT_ICONS if (btn_icon[i] is 1) else FONT_LT
+	str = btn_n[i]
+	if (i is 12): i = 9
         x = i % 3
         y = (i - x) / 3
-        pos = (240 + (x - 1)*80, 360-70-5 - (3-y)*70)
-        font = FONT_ICONS if (btn_icon[i] is 1) else FONT_LT
-        
+	pos = (240 + (x - 1)*80, 360-70-5 - (3-y)*70)
+	
 	str_icon = font.render(str, fgcolor=color, bgcolor=bgcolor, size=40)
         str_icon[1].center = pos
-        lcd.blit(str_icon[0], str_icon[1])
+
+	if touched is True:
+		#for alpha in (100, 200, 230, 250, 255, 250, 230, 200, 100, 0):
+		pygame.draw.circle(SURFACE, touchcolor, pos, 40)
+		str_icon = font.render(str, fgcolor=color, bgcolor=touchcolor, size=40)
+        	str_icon[1].center = pos
+		lcd.blit(str_icon[0], str_icon[1])
+		update()
+		state = touch.getState()
+		while not (state[2] is 3 or state[2] is 2):
+			time.sleep(0.001)
+			state = touch.getState()
+		pygame.draw.circle(SURFACE, bgcolor, pos, 40)
+		str_icon = font.render(str, fgcolor=color, bgcolor=bgcolor, size=40)
+                str_icon[1].center = pos
+                lcd.blit(str_icon[0], str_icon[1])
+		update()
+	else:
+		pygame.draw.circle(SURFACE, bgcolor, pos, 40)
+		str_icon = font.render(str, fgcolor=color, bgcolor=bgcolor, size=40)
+        	str_icon[1].center = pos
+        	lcd.blit(str_icon[0], str_icon[1])
+		update()
+
 
 def ui_numpad_disp(done, color, pos=0, colordone=COLOR_GREEN500, colorbg=None):
 	#pos = (int(round(240 + (i-2.5)*40)), 25)
@@ -159,7 +193,31 @@ def ui_numpad_disp(done, color, pos=0, colordone=COLOR_GREEN500, colorbg=None):
 		rect = Rect(pos[0]-(width/2), pos[1], width, 20)
 		if colorbg is not None:
 			lcd.fill(colorbg, rect)
-		lcd.fill(color, rect)
+		pos = (int((240 + (i-2.5)*40)), 25)
+		col = color
+		if (i < done): 
+			col = colordone
+        	pygame.draw.circle(SURFACE, col, pos, 12)
+		#lcd.fill(color, rect)
+
+def dist(pos1, pos2):
+	return math.sqrt((pos2[0] - pos1[0])*(pos2[0] - pos1[0]) + (pos2[1] - pos1[1])*(pos2[1] - pos1[1])) 
+
+def ui_numpad_getkey(pos):
+	keys = []
+	padding = 5
+	for i in range(0,12):
+		x = i % 3
+        	y = (i - x) / 3
+        	keys.append((240 + (x - 1)*80, 360-70-5 - (3-y)*70))
+	key = -1
+	dx = 35 #maximum distance
+	for i in range(0,12):
+		dxi = dist(pos, keys[i])
+		if (dxi < dx):
+			dx = dxi
+			key = i
+	return key
 
 def ui_numpad():
 	for alpha in (50, 100, 150, 200, 230, 255):
@@ -171,35 +229,75 @@ def ui_numpad():
 		gray = COLOR_GRAY600
 		gray.a = alpha
 		ui_numpad_key(11, gray)
-		update()
 		time.sleep(0.01)
 	
-	update()
-	
-	key = 0
-	#while key is 0
-	#while True:
-	time.sleep(5)
+	key = -1
+	text = ""
+	while True:
+		while touch.hasUpdate() is False:
+			usleep(10000) #10ms
+		event = touch.getState()
+		pos = (event[0], event[1])
+		action = event[2] #1=pressed, 2=released
+                pressed = (action is 1) or (action is 3)
+		if (pressed):
+			key = ui_numpad_getkey(pos)
+			print "User Key: " + str(key)
+			if key is -1: #no key
+				continue
+			if (key is 9 and len(text) > 0):
+				key = 12
+			if (key is 11 and len(text) is 0):
+				ui_numpad_key(key,COLOR_GRAY600)
+				continue
+			else:
+				ui_numpad_key(key,Color(255,255,255),touched=True)
+			if (key is 10):
+				text = text + "0"
+			elif (key is 12):
+				text = text[:-1]
+			elif (key is 9):
+				return
+			elif (key is 11):
+				if (len(text) is 0):
+					continue
+				return				
+			else:
+				text = text + str(key + 1)
+			#update display upon keypress
+			ui_numpad_disp(len(text), blue, 0, colordone=Color(255,255,255), colorbg=COLOR_BLUE900)
+			if (len(text) > 0):
+				ui_numpad_key(12, Color(255,255,255))
+				ui_numpad_key(11, Color(255,255,255))	
+			else:
+				ui_numpad_key(9, Color(255,255,255))
+				ui_numpad_key(11, COLOR_GRAY600)
+			update()
+			if (len(text) >= 6):
+				return
+
 
 def ui_main():
-	
 	clearScreen(COLOR_BLUE900)
-	drawBigIcon(u"\uf341")
-	
-	state = 0
+	state = -1
 
-	while state is 0:
-        	updateTimeBottom()
-                update()
-		if (touch.hasUpdate() is True):
-			state = 1
-			break
-                time.sleep(0.1)
-	if state is 1:
-		event = touch.getState()
-		event = (event[0],event[1])
-		ui_clear(COLOR_BLUE900, event)
-		ui_numpad()
+	while True:
+		if state is -1:
+			drawBigIcon(u"\uf341")
+			state = 0
+		if state is 0:
+        		updateTimeBottom()
+                	update()
+			if (touch.hasUpdate() is True):
+				press = touch.getState()[2]
+				if (press is 1 or press is 3):
+					state = 1
+		if state is 1:
+			ui_clear(COLOR_BLUE900, touch_coord())
+			ui_numpad()
+			ui_clear(COLOR_BLUE900, touch_coord())
+			state = -1
+		usleep(10000) #100ms
 
 try:
 	ui_main()
