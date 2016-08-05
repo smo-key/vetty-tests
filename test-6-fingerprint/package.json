@@ -1,0 +1,14 @@
+{
+  "name": "test-6-fingerprint",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "gt511c3": "git+https://github.com/smo-key/GT-511C3.git"
+  }
+}
