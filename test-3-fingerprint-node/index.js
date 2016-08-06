@@ -20,8 +20,25 @@ fps.init().then(
     }
 );
 
+
 function enroll()
 {
+	fps.waitFinger(15000).then(function() {
+      		console.log("Finger now down");
+		fps.enroll(0).then(function() {
+			fps.ledONOFF(fps.LED_OFF);
+			console.log("Enroll complete!");
+		}, function(err) {
+			console.error(fps.decodeError(err));
+		});
+       	}, function(err) {
+       	        console.error(fps.decodeError(err));
+        });
+}
+
+function test()
+{
+
 	//fps.ledONOFF(fps.LED_ON);
 	fps.isPressFinger().then(function() {
 		console.log("Finger is down");
