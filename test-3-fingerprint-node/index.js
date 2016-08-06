@@ -1,5 +1,4 @@
 var GT511C3 = require('gt511c3');
-
 var fps = new GT511C3('/dev/ttyAMA0', { baudrate: 9600, debug: false });
 
 fps.init().then(
@@ -11,31 +10,147 @@ fps.init().then(
 	fps.ledONOFF(fps.LED_ON);
 	fps.getEnrollCount().then(function(count) {
   		console.log("Enrolled fingerprints count: " + count);
-		enroll();
+		
+		deleteID(0)
+		.then(function() { return enroll(0); })
+		.then(function() {
+			console.log("All done!");
+		}, function(err) {
+			console.error(fps.decodeError(err) + " (" + err + ")");
+		});
 	});
-	//start();
     },
     function(err) {
         console.log('init err: ' + err);
     }
 );
 
+function delay_ms(ms) {
+    return (new Promise(function(resolve, reject) {
+      setTimeout(resolve, ms);
+    }));
+}
 
-function enroll()
+var deleteID = function(id) {
+	return (new Promise(function(resolve, reject){
+		var errorHandler = function(err) {
+			console.log("Error resolved");
+			resolve();
+		}
+		
+		fps.deleteID(id).then(function() {
+			console.log("ID Deleted!");
+			resolve();
+		}, function(err) {
+			console.warn("No ID to delete!");
+			resolve();
+		});
+	}));
+}
+
+var enroll = function(ID) {
+    return (new Promise(function(resolve, reject) {
+      var errorHandler = function(err) {
+        reject(err);
+      }
+      var start = function() {
+        return fps.enrollStart(ID)
+      }
+      var capture = function() {
+        return fps.captureFinger(fps.BEST_IMAGE);
+      };
+      var waitFinger = function() {
+        return fps.waitFinger(10000);
+      };
+      var waitReleaseFinger = function() {
+        return fps.waitReleaseFinger(10000);
+      };
+      var enroll_delay = function() {
+        return delay_ms(500);
+      }
+      var blink_delay = function() {
+        return delay_ms(100);
+      }
+      var ledON = function() {
+        return fps.ledONOFF(1);
+      }
+      var ledOFF = function() {
+        return fps.ledONOFF(0);
+      }
+
+      ledON()
+        .then(waitFinger)
+        .then(start)
+        .then(capture)
+        .then(function() {
+          return fps.enroll1();
+        })
+        .then(ledOFF)
+        .then(blink_delay)
+        .then(ledON)
+        .then(waitReleaseFinger)
+
+      .then(enroll_delay)
+
+      .then(waitFinger)
+        .then(capture)
+        .then(function() {
+          return fps.enroll2();
+        })
+        .then(ledOFF)
+        .then(blink_delay)
+        .then(ledON)
+        .then(waitReleaseFinger)
+
+      .then(enroll_delay)
+
+      .then(waitFinger)
+        .then(capture)
+        .then(function() {
+          return fps.enroll3();
+        })
+        .then(ledOFF)
+
+      .then(function() {
+        resolve();
+      }, function(err) {
+        ledOFF();
+        reject(err);
+      });
+    }));
+}
+
+/**
+function enroll(id)
 {
+	console.log("Waiting for finger...");
 	fps.waitFinger(15000).then(function() {
       		console.log("Finger now down");
-		fps.enroll(0).then(function() {
-			fps.ledONOFF(fps.LED_OFF);
-			console.log("Enroll complete!");
+		fps.enrollStart(0).then(function() {
+			console.log("Enroll started!");
+			fps.enroll1(id).then(function() {
+				console.log("Enroll 1 complete!");
+				fps.enroll2(id).then(function() {
+                        		console.log("Enroll 2 complete!");
+					fps.enroll3(id).then(function() {
+						console.log("Enroll complete!");
+                        		}, function(err) {
+                                		console.error(fps.decodeError(err));
+                        		});
+				}, function(err) {
+                        	        console.error(fps.decodeError(err));
+                        	});
+			}, function(err) {
+				console.error(fps.decodeError(err));
+			});
 		}, function(err) {
 			console.error(fps.decodeError(err));
 		});
        	}, function(err) {
-       	        console.error(fps.decodeError(err));
+       	        console.error(err);
         });
 }
-
+**/
 function test()
 {
 
