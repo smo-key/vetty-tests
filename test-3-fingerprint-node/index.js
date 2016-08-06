@@ -12,7 +12,9 @@ fps.init().then(
   		console.log("Enrolled fingerprints count: " + count);
 		
 		deleteID(0)
-		.then(function() { return enroll(0); })
+		.then(function() { console.log("Starting enrollment..."); return enroll(0); })
+		.then(function() { console.log("Waiting for finger..."); return fps.waitFinger(10000); })
+		.then(function() { console.log("Starting verify..."); return fps.verify(0); })
 		.then(function() {
 			console.log("All done!");
 		}, function(err) {
