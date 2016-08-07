@@ -7,18 +7,21 @@ fps.init().then(
         console.log('Firmware version: ' + fps.firmwareVersion);
         console.log('Iso area max: ' + fps.isoAreaMaxSize);
         console.log('Device serial number: ' + fps.deviceSerialNumber);
-	fps.ledONOFF(fps.LED_ON);
 	fps.getEnrollCount().then(function(count) {
   		console.log("Enrolled fingerprints count: " + count);
-		
-		deleteID(0)
-		.then(function() { console.log("Starting enrollment..."); return enroll(0); })
-		.then(function() { console.log("Waiting for finger..."); return fps.waitFinger(10000); })
-		.then(function() { console.log("Starting verify..."); return fps.verify(0); })
+		/*console.log("Starting enrollment...");
+		enroll(1)
+		.then(function() { console.log("Getting enroll count..."); return fps.getEnrollCount(); })
+		.then(function(count) { return console.log("Enrolled fingerprints: " + count); })
+		.then(function() { console.log("Starting identification..."); return identify(); })
+		*/
+		identify()
 		.then(function() {
 			console.log("All done!");
+			fps.ledONOFF(0);
 		}, function(err) {
 			console.error(fps.decodeError(err) + " (" + err + ")");
+			fps.ledONOFF(0);
 		});
 	});
     },
@@ -33,13 +36,26 @@ function delay_ms(ms) {
     }));
 }
 
-var deleteID = function(id) {
+var identify = function() {
 	return (new Promise(function(resolve, reject){
-		var errorHandler = function(err) {
-			console.log("Error resolved");
+		fps.ledONOFF(1)
+		.then(function() { return fps.waitReleaseFinger(10000); })
+		.then(function() { return fps.waitFinger(10000); })
+		.then(function() { return fps.captureFinger(); })
+		.then(function() { return fps.identify(); })
+		.then(function(id) {
+			console.log("Logged in as " + id);
+			fps.ledONOFF(0);
 			resolve();
-		}
-		
+		}, function(err) {
+			fps.ledONOFF(0);
+			reject(err);
+		});
+	}));
+}
+
+var deleteID = function(id) {
+	return (new Promise(function(resolve, reject){		
 		fps.deleteID(id).then(function() {
 			console.log("ID Deleted!");
 			resolve();
@@ -79,8 +95,10 @@ var enroll = function(ID) {
       var ledOFF = function() {
         return fps.ledONOFF(0);
       }
+      
 
-      ledON()
+      deleteID(ID)
+        .then(ledON)
         .then(waitFinger)
         .then(start)
         .then(capture)
@@ -120,68 +138,4 @@ var enroll = function(ID) {
         reject(err);
       });
     }));
-}
-
-/**
-function enroll(id)
-{
-	console.log("Waiting for finger...");
-	fps.waitFinger(15000).then(function() {
-      		console.log("Finger now down");
-		fps.enrollStart(0).then(function() {
-			console.log("Enroll started!");
-			fps.enroll1(id).then(function() {
-				console.log("Enroll 1 complete!");
-				fps.enroll2(id).then(function() {
-                        		console.log("Enroll 2 complete!");
-					fps.enroll3(id).then(function() {
-						console.log("Enroll complete!");
-                        		}, function(err) {
-                                		console.error(fps.decodeError(err));
-                        		});
-				}, function(err) {
-                        	        console.error(fps.decodeError(err));
-                        	});
-			}, function(err) {
-				console.error(fps.decodeError(err));
-			});
-		}, function(err) {
-			console.error(fps.decodeError(err));
-		});
-       	}, function(err) {
-       	        console.error(err);
-        });
-}
-**/
-function test()
-{
-
-	//fps.ledONOFF(fps.LED_ON);
-	fps.isPressFinger().then(function() {
-		console.log("Finger is down");
-		fps.ledONOFF(fps.LED_OFF);
-	}, function(err) {
-		if ((err === undefined) || (err == "finger is not pressed"))
-			console.log("Finger not down");
-		else 
-			console.error(fps.decodeError(err));
-		fps.ledONOFF(fps.LED_OFF);
-	});
-	/**fps.waitFinger(5000).then(function() {
-		console.log("Finger pressed!");
-		fps.waitReleaseFinger(10000).then(function() {
-			console.log("Finger released!");
-		}, function(err) {
-			console.error(fps.decodeError(err));
-		});
-	}, function(err) {
-		console.error(fps.decodeError(err));
-	});**/
-}
-
-function start()
-{
-    fps.ledONOFF(fps.LED_OFF);
-    while(!fps.isPressFinger()) { }
-    fps.ledONOFF(fps.LED_OFF);
 }
