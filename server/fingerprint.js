@@ -1,34 +1,39 @@
 var GT511C3 = require('gt511c3');
 var fps = new GT511C3('/dev/ttyAMA0', { baudrate: 9600, debug: false });
 
-fps.init().then(
-    function() {
-        //init ok
-        console.log('Firmware version: ' + fps.firmwareVersion);
-        console.log('Iso area max: ' + fps.isoAreaMaxSize);
-        console.log('Device serial number: ' + fps.deviceSerialNumber);
-	fps.getEnrollCount().then(function(count) {
-  		console.log("Enrolled fingerprints count: " + count);
-		/*console.log("Starting enrollment...");
-		enroll(1)
-		.then(function() { console.log("Getting enroll count..."); return fps.getEnrollCount(); })
-		.then(function(count) { return console.log("Enrolled fingerprints: " + count); })
-		.then(function() { console.log("Starting identification..."); return identify(); })
-		*/
-		identify()
-		.then(function() {
-			console.log("All done!");
-			fps.ledONOFF(0);
-		}, function(err) {
-			fps.ledONOFF(0);
-			console.error(fps.decodeError(err) + " (" + err + ")");
+exports.fps = function() { return fps; }
+
+exports.init = function() {
+	return(new Promise(function(resolve, reject) {
+		fps.init().then(
+		function() {
+	        	//init ok
+		        console.log('Firmware version: ' + fps.firmwareVersion);
+	       		console.log('Iso area max: ' + fps.isoAreaMaxSize);
+		        console.log('Device serial number: ' + fps.deviceSerialNumber);
+			fps.getEnrollCount().then(function(count) {
+  				console.log("Enrolled fingerprints count: " + count);
+				/*console.log("Starting enrollment...");
+				enroll(1)
+				.then(function() { console.log("Getting enroll count..."); return fps.getEnrollCount(); })
+				.then(function(count) { return console.log("Enrolled fingerprints: " + count); })
+				.then(function() { console.log("Starting identification..."); return identify(); })
+				*/
+				identify()
+				.then(function() {
+					console.log("All done!");
+					fps.ledONOFF(0);
+				}, function(err) {
+					fps.ledONOFF(0);
+					console.error(fps.decodeError(err) + " (" + err + ")");
+				});
+    			},
+    			function(err) {
+        			console.log('Init error: ' + err);
+    			});
 		});
-	});
-    },
-    function(err) {
-        console.log('Init error: ' + err);
-    }
-);
+	}));
+}
 
 function delay_ms(ms) {
     return (new Promise(function(resolve, reject) {
