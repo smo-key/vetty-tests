@@ -20,13 +20,13 @@ fps.init().then(
 			console.log("All done!");
 			fps.ledONOFF(0);
 		}, function(err) {
-			console.error(fps.decodeError(err) + " (" + err + ")");
 			fps.ledONOFF(0);
+			console.error(fps.decodeError(err) + " (" + err + ")");
 		});
 	});
     },
     function(err) {
-        console.log('init err: ' + err);
+        console.log('Init error: ' + err);
     }
 );
 
@@ -48,7 +48,7 @@ var identify = function() {
 			fps.ledONOFF(0);
 			resolve();
 		}, function(err) {
-			fps.ledONOFF(0);
+			//fps.ledONOFF(0);
 			reject(err);
 		});
 	}));
