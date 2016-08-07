@@ -12,29 +12,11 @@
 
 
 do_start () {
-    #/usr/bin/fbi -T 1 --noverbose --noedit -a /home/pi/yo.png
     #sleep 5
-    #echo "RUNNING MODIFIER..."
-    #echo "--------------------"
     cd /home/pi/vetty/display
-    #../modifier > ../LOG
-    #../modifier
-    #echo "$?" >> ../LOG
-    #../modifier
-    #if [ "$?" -eq 0 ]; then
-    #    (/usr/bin/python screentest.py &)
-   #echo "-------YAY-------"
-    #else
-	#/usr/bin/fbi -T 1 --noverbose --noedit -a /home/pi/yo.png
-    #echo "-------NAY-------"
-    #fi
     (/usr/bin/python image.py &)
     touch ../temp
     cd -
-    #sleep 5
-    #echo "-------------------"
-    #echo "-----DONE----------"
-    #sleep 5
     exit 0
 }
 
@@ -57,5 +39,3 @@ case "$1" in
     exit 3
     ;;
 esac
-
-:
