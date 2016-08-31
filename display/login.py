@@ -13,6 +13,11 @@ import math
 from PyTouch import pytouch
 from PyTouch.pytouch import TouchThread as TouchThread
 from timeit import default_timer as timer
+import requests
+
+#from web import WebThread
+from flask import Flask
+app = Flask(__name__)
 
 #from signal import alarm, signal, SIGALRM, SIGKILL
 #
@@ -26,6 +31,8 @@ COLOR_BLUE900 = pygame.Color(13,71,161).correct_gamma(GAMMA)
 COLOR_BLUE800 = pygame.Color(21, 101, 192).correct_gamma(GAMMA)
 COLOR_RED900 = pygame.Color(191,54,12).correct_gamma(GAMMA)
 COLOR_RED800 = pygame.Color(216,67,21).correct_gamma(GAMMA)
+COLOR_GREEN900 = pygame.Color(27,94,32).correct_gamma(GAMMA)
+COLOR_GREEN800 = pygame.Color(46,125,50) #.correct_gamma(GAMMA)
 COLOR_WHITE = pygame.Color(255,255,255)
 COLOR_BLACK = pygame.Color(0,0,0)
 COLOR_GRAY600 = pygame.Color(117, 117, 117)
@@ -48,12 +55,16 @@ lcd = pygame.display.set_mode((480, 320))
 #Font drawing
 SURFACE = pygame.display.get_surface()
 FONT_LT = freetype.Font("../fonts/HelveticaNeueLTStd-Lt.otf", size=64);
+FONT_MD = freetype.Font("../fonts/HelveticaNeueLTStd-Md.otf", size=64);
 FONT_ICONS = freetype.Font("../fonts/materialdesignicons-webfont.ttf", size=64, ucs4=True);
 
 def clearScreen(color):
 	global COLOR_BG
 	COLOR_BG = color
 	lcd.fill(COLOR_BG)
+
+def colorAlphaMult(color, alpha):
+    return pygame.Color(color.r, color.g, color.b, int(math.floor(color.a * alpha)))
 
 def updateTimeBottom():
 	#Get current time
@@ -124,15 +135,6 @@ def touch_coord():
 #Enable VSync
 enable_vsync()
 
-def exitThreads():
-        #Exit threads
-        print "Exiting..."
-        for t in threads:
-                t.stop()
-        for t in threads:
-                t.join()
-        print "Exited."
-
 def ui_clear(color=COLOR_BLUE900, pos=(240,160)):
 	r = (10, 20, 40, 70, 110, 160, 240, 320)
 	dist = math.sqrt((240-pos[0])*(240-pos[0]) + (160-pos[1])*(160-pos[1]))
@@ -148,12 +150,12 @@ def ui_numpad_key(i, color, bgcolor=COLOR_BLUE900, touchcolor=COLOR_BLUE800, tou
 	if i is -1: return
 
 	btn_exit = u"\uf156"
-        btn_backspace = u"\uf06e"
-        btn_check = u"\uf12c"
-        btn_n = ('1', '2', '3', '4', '5', '6', '7', '8', '9', btn_exit, '0', btn_check, btn_backspace)
-        btn_icon = (0,0,0,0,0,0,0,0,0,1,0,1,1)
+	btn_backspace = u"\uf06e"
+	btn_check = u"\uf12c"
+	btn_n = ('1', '2', '3', '4', '5', '6', '7', '8', '9', btn_exit, '0', btn_check, btn_backspace)
+	btn_icon = (0,0,0,0,0,0,0,0,0,1,0,1,1)
 	
-        font = FONT_ICONS if (btn_icon[i] is 1) else FONT_LT
+	font = FONT_ICONS if (btn_icon[i] is 1) else FONT_LT
 	str = btn_n[i]
 	if (i is 12): i = 9
         x = i % 3
@@ -295,13 +297,70 @@ def ui_numpad():
 		#incorrect
 		lcd.fill(COLOR_RED900)
 		ui_numpad_disp(0, COLOR_RED800, 0, colorbg=COLOR_RED900)
-        	for i in range(0,11):
-               		ui_numpad_key(i, Color(255, 255, 255, alpha), COLOR_RED900)
-        	ui_numpad_key(11, COLOR_GRAY600, COLOR_RED900)
+		for i in range(0,11):
+			ui_numpad_key(i, Color(255, 255, 255, alpha), COLOR_RED900)
+		ui_numpad_key(11, COLOR_GRAY600, COLOR_RED900)
 		update()
 
 		#repeat
 		text = ui_numpad_loop(bigstart, COLOR_RED900, COLOR_RED800)
+
+def ui_title(color, bgcolor, title, icon):
+	str_icon = FONT_ICONS.render(icon, fgcolor=color, size=32)
+	str_icon[1].center = (30,32)
+
+	str_title = FONT_LT.render(title, fgcolor=color, size=32)
+	str_title[1].left = 64
+	str_title[1].top = 20
+
+	blit_clear = pygame.Rect(0,0,480,70)
+	lcd.fill(bgcolor, blit_clear)
+	
+	lcd.blit(str_icon[0], str_icon[1])	
+	lcd.blit(str_title[0], str_title[1])
+
+def ui_draw_textbox(color, toptext, helptext):
+	
+	rect = pygame.Rect(64, 116, 352, 40)
+	lcd.fill(color, rect)
+
+	str_top = FONT_LT.render(toptext, fgcolor=colorAlphaMult(color, 0.5), size=24)
+	str_top[1].left = 64
+	str_top[1].top = 80
+
+	str_bottom = FONT_LT.render(helptext, fgcolor=colorAlphaMult(color, 0.3), size=16)
+	str_bottom[1].left = 64
+	str_bottom[1].top = 174
+
+	lcd.blit(str_top[0], str_top[1])
+	lcd.blit(str_bottom[0], str_bottom[1])
+
+def ui_register():
+	ui_clear(COLOR_GREEN800)
+	for alpha in (50, 100, 150, 200, 230, 255):
+		white = COLOR_WHITE
+		white.a = alpha
+		ui_title(white, COLOR_GREEN800, "Register", u"\uf014")
+		ui_draw_textbox(white, "Enter your first and last name", "Press the ENTER key when you're done or ESC to go back")	
+		update()
+		time.sleep(0.01)
+	while True:
+		time.sleep(5)
+
+def updateState(state):
+	try:
+		#check the server status and change state appropriately
+		r = requests.get('http://localhost:8002/state')
+		text = r.text
+		#print text
+		if (text == "Normal") and (state > 10):
+			state = -1
+		elif (text == "Register") and (state < 10 or state >= 20):
+			state = 10
+		#print text + " " + str(state)
+		return state
+	except Exception:
+		pass
 
 def ui_main():
 	clearScreen(COLOR_BLUE900)
@@ -309,25 +368,71 @@ def ui_main():
 
 	while True:
 		if state is -1:
+			#Draw start icon
 			drawBigIcon(u"\uf341")
 			state = 0
 		if state is 0:
-        		updateTimeBottom()
-                	update()
+			#Draw start screen
+			updateTimeBottom()
+			update()
 			if (touch.hasUpdate() is True):
 				press = touch.getState()[2]
 				if (press is 1 or press is 3):
 					state = 1
 		if state is 1:
+			#Draw login numpad
 			ui_clear(COLOR_BLUE900, touch_coord())
 			result = ui_numpad()
 			ui_clear(COLOR_BLUE900, touch_coord())
 			state = -1
-		usleep(10000) #100ms
+		if state is 10:
+			#Register
+			#print "Running registration"
+			ui_register()
+		state = updateState(state)
+		usleep(25000) #250ms
 
-try:
-	ui_main()
-except (Exception,KeyboardInterrupt,SystemExit) as e:
-	traceback.print_exc()
-	exitThreads()
+#Web server
+#@app.route('/register/start')
+#def register_start():
+#	print "Starting registration..."
+#	state = 10
+#	return "OK"
+
+#@app.route('/register/end')
+#def register_end():
+#	print "Ending registration..."
+#	state = -1
+#	return "OK"
+
+#def webThread():
+#	app.run(host='0.0.0.0', port=8003)
+
+#def startWebThread():
+#	t = threading.Thread(target=webThread,args=())
+#	t.daemon = True
+#	t.start()
+
+#Start web server thread
+#startWebThread()
+
+def exitThreads():
+	#Exit threads
+	print "Exiting..."
+	for t in threads:
+		t.stop()
+	for t in threads:
+		t.join()
+	print "Exited."
+
+def done():
+	print "All done!"
+
+if __name__ == '__main__':
+	try:
+		ui_main()
+	except (Exception,KeyboardInterrupt,SystemExit) as e:
+		traceback.print_exc()
+		exitThreads()
 exitThreads()
+done()
