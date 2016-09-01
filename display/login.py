@@ -15,17 +15,6 @@ from PyTouch.pytouch import TouchThread as TouchThread
 from timeit import default_timer as timer
 import requests
 
-#from web import WebThread
-from flask import Flask
-app = Flask(__name__)
-
-#from signal import alarm, signal, SIGALRM, SIGKILL
-#
-#def alarm_handler(signum, frame):
-#        pygame.quit()
-#        sys.exit(0)
-#signal(SIGKILL, alarm_handler)
-
 GAMMA = 2
 COLOR_BLUE900 = pygame.Color(13,71,161).correct_gamma(GAMMA)
 COLOR_BLUE800 = pygame.Color(21, 101, 192).correct_gamma(GAMMA)
@@ -316,7 +305,7 @@ def ui_title(color, bgcolor, title, icon):
 	blit_clear = pygame.Rect(0,0,480,70)
 	lcd.fill(bgcolor, blit_clear)
 	
-	lcd.blit(str_icon[0], str_icon[1])	
+	lcd.blit(str_icon[0], str_icon[1])
 	lcd.blit(str_title[0], str_title[1])
 
 def ui_draw_textbox(color, toptext, helptext):
@@ -335,17 +324,26 @@ def ui_draw_textbox(color, toptext, helptext):
 	lcd.blit(str_top[0], str_top[1])
 	lcd.blit(str_bottom[0], str_bottom[1])
 
+def getKeyboardString():
+	s = ""
+	while True:
+		event = pygame.event.wait()
+		print event
+		print event.type
+	return c
+
 def ui_register():
 	ui_clear(COLOR_GREEN800)
 	for alpha in (50, 100, 150, 200, 230, 255):
 		white = COLOR_WHITE
 		white.a = alpha
 		ui_title(white, COLOR_GREEN800, "Register", u"\uf014")
-		ui_draw_textbox(white, "Enter your first and last name", "Press the ENTER key when you're done or ESC to go back")	
+		ui_draw_textbox(white, "Enter your first name", "Press the ENTER key when you're done or ESC to go back")	
 		update()
 		time.sleep(0.01)
-	while True:
-		time.sleep(5)
+	print getKeyboardString()
+	print "Done!"
+	return
 
 def updateState(state):
 	try:
@@ -360,7 +358,7 @@ def updateState(state):
 		#print text + " " + str(state)
 		return state
 	except Exception:
-		pass
+		return state
 
 def ui_main():
 	clearScreen(COLOR_BLUE900)
@@ -391,30 +389,6 @@ def ui_main():
 			ui_register()
 		state = updateState(state)
 		usleep(25000) #250ms
-
-#Web server
-#@app.route('/register/start')
-#def register_start():
-#	print "Starting registration..."
-#	state = 10
-#	return "OK"
-
-#@app.route('/register/end')
-#def register_end():
-#	print "Ending registration..."
-#	state = -1
-#	return "OK"
-
-#def webThread():
-#	app.run(host='0.0.0.0', port=8003)
-
-#def startWebThread():
-#	t = threading.Thread(target=webThread,args=())
-#	t.daemon = True
-#	t.start()
-
-#Start web server thread
-#startWebThread()
 
 def exitThreads():
 	#Exit threads
