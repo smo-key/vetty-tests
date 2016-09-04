@@ -135,6 +135,9 @@ def ui_clear(color=COLOR_BLUE900, pos=(240,160)):
 	lcd.fill(color)
 	update()
 
+def ui_fastclear(color=COLOR_BLUE900):
+	lcd.fill(color)
+
 def ui_numpad_key(i, color, bgcolor=COLOR_BLUE900, touchcolor=COLOR_BLUE800, touched=False):
 	if i is -1: return
 
@@ -302,8 +305,9 @@ def ui_title(color, bgcolor, title, icon):
 	str_title[1].left = 64
 	str_title[1].top = 20
 
-	blit_clear = pygame.Rect(0,0,480,70)
-	lcd.fill(bgcolor, blit_clear)
+	lcd.fill(bgcolor)
+	#blit_clear = pygame.Rect(0,0,480,70)
+	#lcd.fill(bgcolor, blit_clear)
 	
 	lcd.blit(str_icon[0], str_icon[1])
 	lcd.blit(str_title[0], str_title[1])
@@ -313,11 +317,11 @@ def ui_draw_textbox(color, toptext, helptext):
 	rect = pygame.Rect(64, 116, 352, 40)
 	lcd.fill(color, rect)
 
-	str_top = FONT_LT.render(toptext, fgcolor=colorAlphaMult(color, 0.5), size=24)
+	str_top = FONT_LT.render(toptext, fgcolor=colorAlphaMult(color, 0.9), size=24)
 	str_top[1].left = 64
 	str_top[1].top = 80
 
-	str_bottom = FONT_LT.render(helptext, fgcolor=colorAlphaMult(color, 0.3), size=16)
+	str_bottom = FONT_LT.render(helptext, fgcolor=colorAlphaMult(color, 0.7), size=16)
 	str_bottom[1].left = 64
 	str_bottom[1].top = 174
 
@@ -327,69 +331,111 @@ def ui_draw_textbox(color, toptext, helptext):
 def getKeyboardString(allowcancel, regex):
 	s = ""
 	test = re.compile(regex)
-	done = False
 	pygame.event.clear()
-	while not done:
-		while True:
-			while not pygame.event.peek(2):
-				time.sleep(0.01)
-			event = pygame.event.get(2)[0]
-			pygame.event.clear()
-			#print event.__dict__
-			code = event.__dict__['key']
-			char = event.__dict__['unicode']
-			if (code is 13) and (len(s) > 0):
-				#enter key
-				done = True
-				break
-			elif (code is 27) and allowcancel:
-				#escape
-				done = True
-				s = ""
-				break
-			elif (code is 8) and (len(s) > 0):
-				#backspace
-				s = s[:-1]
-			#rest is actual characters
-			elif (test.match(char) is None) or (test.match(s + char) is None):
-				#don't allow this character because it would fail to pass the regex
-				continue
-			elif code >= 97 and code <= 122:
-				s += char
-			elif code is 32:
-				s += char
-			elif code is 45:
-				s += char
-			elif code >= 48 and code <= 57:
-				s += char
-			else:
-				continue
-			#print s + " (" + char + ")"
+	while True:
+		while not pygame.event.peek(2):
+			time.sleep(0.01)
+		event = pygame.event.get(2)[0]
+		pygame.event.clear()
+		#print event.__dict__
+		code = event.__dict__['key']
+		char = event.__dict__['unicode']
+		if (code is 13) and (len(s) > 0):
+			#enter key
+			return s
+		elif (code is 27) and allowcancel:
+			#escape
+			return None
+		elif (code is 8) and (len(s) > 0):
+			#backspace
+			s = s[:-1]
+		#rest is actual characters
+		elif (test.match(char) is None) or (test.match(s + char) is None):
+			#don't allow this character because it would fail to pass the regex
+			continue
+		elif code >= 97 and code <= 122:
+			s += char
+		elif code is 32:
+			s += char
+		elif code is 45:
+			s += char
+		elif code >= 48 and code <= 57:
+			s += char
+		else:
+			continue
 
-			#Draw the string!
-			rect = pygame.Rect(64, 116, 352, 40)
-			lcd.fill(COLOR_WHITE, rect)
-
-			str = FONT_LT.render(s, fgcolor=COLOR_BLACK, size=24)
-			str[1].center = (80, 136)
-			str[1].left = 72
-
-			lcd.blit(str[0], str[1])
-			update()
+		#print s + " (" + char + ")"
+		#Draw the string!
+		rect = pygame.Rect(64, 116, 352, 40)
+		lcd.fill(COLOR_WHITE, rect)
+		str = FONT_LT.render(s, fgcolor=COLOR_BLACK, size=24)
+		str[1].center = (80, 136)
+		str[1].left = 72
+		lcd.blit(str[0], str[1])
+		update()
 	return s
 
 def ui_register():
-	ui_clear(COLOR_GREEN800)
-	for alpha in (50, 100, 150, 200, 230, 255):
-		white = COLOR_WHITE
-		white.a = alpha
-		ui_title(white, COLOR_GREEN800, "Register", u"\uf014") #f014
-		ui_draw_textbox(white, "Enter your LEGAL FULL name", "Press the ENTER key when you're done or ESC to go back")	
-		update()
-		time.sleep(0.01)
-	print getKeyboardString(True, "^[A-Za-z -]*$")
-	print "Done!"
-	return
+
+	phase = 1
+	firstName = None
+	lastName = None
+	stuId = None
+	invalidId = False
+	while True:
+		if phase is 1:
+			#Get first name
+			ui_clear(COLOR_GREEN800)
+			for alpha in (50, 100, 150, 200, 230, 255):
+				white = COLOR_WHITE
+				white.a = alpha
+				ui_fastclear(COLOR_GREEN800)
+				ui_title(white, COLOR_GREEN800, "Register", u"\uf014") #f014
+				ui_draw_textbox(white, "Enter your first name", "Press the ENTER key when you're done or ESC to reset")	
+				update()
+				time.sleep(0.01)
+			firstName = getKeyboardString(True, "^[A-Za-z\\-]{0,24}$")
+			if firstName is None:
+				return
+			firstName = firstName.title()
+			phase = 2
+		elif phase is 2:
+			#Get last name
+			ui_fastclear(COLOR_GREEN800)
+			ui_title(COLOR_WHITE, COLOR_GREEN800, "Hi, " + firstName, u"\uf014")
+			ui_draw_textbox(COLOR_WHITE, "Enter your last name", "Press the ENTER key when you're done or ESC to go back")
+			update()
+			lastName = getKeyboardString(True, "^[A-Za-z\\-]{0,24}$")
+			if lastName is None:
+				phase = 1
+			else:
+				lastName = lastName.title()
+				invalidId = False
+				phase = 3
+		elif phase is 3:
+			#Get student ID
+			ui_fastclear(COLOR_GREEN800)
+			ui_title(COLOR_WHITE, COLOR_GREEN800, "Almost ready, " + firstName, u"\uf014")
+			helptext = "Press the ENTER key when you're done or ESC to go back"
+			if invalidId:
+				helptext = "Invalid student or teacher ID."
+			ui_draw_textbox(COLOR_WHITE, "Enter your student or teacher ID", helptext)
+			update()
+			stuId = getKeyboardString(True, "^[0-9]{0,9}$")
+			if stuId is None:
+				phase = 2
+			elif len(stuId) < 7:
+				#Not valid student ID
+				invalidId = True
+				pass
+			else:
+				phase = 11
+		elif phase is 11:
+			print "Done!"
+			print firstName
+			print lastName
+			print stuId
+			return
 
 def updateState(state):
 	try:
