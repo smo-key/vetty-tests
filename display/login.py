@@ -14,6 +14,7 @@ from PyTouch import pytouch
 from PyTouch.pytouch import TouchThread as TouchThread
 from timeit import default_timer as timer
 import requests
+import subprocess
 
 GAMMA = 2
 COLOR_BLUE900 = pygame.Color(13,71,161).correct_gamma(GAMMA)
@@ -489,6 +490,7 @@ def ui_register():
 					count = 0
 					ui_register_fp(count, "Lift finger and try again", "Hold your finger firmly on the pad")
 					update()
+					time.sleep(2)
 				elif ((r is not None) and r.text == "OK"):
 					if count is 1:
 						ui_register_fp(count, "Rotate finger slightly left and place", "Hold finger firmly on the pad")
@@ -496,7 +498,7 @@ def ui_register():
 						ui_register_fp(count, "Rotate finger slightly right and place", "Hold finger firmly on the pad")
 					update()
 				r = requests.post('http://localhost:8002/register/' + str(int(count + 1)), data={ })
-				print r.text
+				#print r.text
 				if (r.text == "OK"):
 					count += 1
 					ui_register_fp(count - 0.5, "Lift your finger now", "")
@@ -504,14 +506,14 @@ def ui_register():
 					d = requests.post('http://localhost:8002/wait/release', data={ })
 					print "Release: " + d.text
 				else:
-					print "Enroll " + str(count) + ": " + r.text
-					if ("finger_timeout!" in r.text):				
-						f = requests.post('http://localhost:8002/led/off', data={ })
+					print "Enroll " + str(int(count + 1)) + ": " + r.text
+					#if ("finger_timeout!" in r.text):				
+					#	f = requests.post('http://localhost:8002/led/off', data={ })
+					#	print "Led OFF: " + f.text
+					#	return
+					if ("timeout!" in r.text):
+						f = requests.post('http://localhost:8002/led/off', data = { })
 						print "Led OFF: " + f.text
-						return
-					elif ("timeout!" in r.text):
-						f = requests.post('http://localhost:8002/reset', data = { })
-						print "Reset: " + f.text
 						return
 
 			#Add to database

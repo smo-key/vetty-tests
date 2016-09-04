@@ -1,5 +1,5 @@
 var GT511C3 = require('gt511c3');
-var fps = new GT511C3('/dev/ttyAMA0', { baudrate: 9600, debug: false });
+fps = new GT511C3('/dev/ttyAMA0', { baudrate: 115200, debug: false });
 
 exports.fps = function() { return fps; }
 
@@ -51,16 +51,33 @@ exports.identify = function() {
 recreateFps = function() {
 	return (new Promise(function(resolve, reject) {
 		console.log("Recreating FPS...")
-		fps = new GT511C3('/dev/ttyAMA0', { baudrate: 9600, debug: true })
+		fps = undefined
+		fps = new GT511C3('/dev/ttyAMA0', { baudrate: 115200, debug: true })
+		console.log("Recreated FPS!");
 		resolve()
 	}));
 }
 
-exports.reset = function() {
+exports.close = function() {
 	return (new Promise(function(resolve, reject) {
 		fps.closePort()
-		.then(recreateFps)
-		.then(() => { return fps.init();})
+		.then(() => { resolve(); },
+			  (err) => { reject(err); })	
+	}));
+}
+
+exports.reset = function() {
+	delete fps
+	fps = new GT511C3('/dev/ttyAMA0', { baudrate: 115200, debug: true })
+	return (new Promise(function(resolve, reject) {
+		fps.init()
+		//fps.closePort()
+		//.then(recreateFps)
+		//.then(() => { return fps.setPort('/dev/ttyAMA0', 115200); })
+		//.then(() => { return fps.open(fps.EXTRA_INFO); })
+		//.then(recreateFps)
+		//.then(() => { return fps.open(); })
+		//.then(() => { return fps.init();})
 		//.then(() => { return fps.ledONOFF(0); })
 		.then(() => { resolve(); },
 			  (err) => { reject(err); })

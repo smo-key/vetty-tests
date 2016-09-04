@@ -2,8 +2,10 @@ var express = require('express');
 var publicApi = express();
 var privateApi = express();
 var bodyParser = require('body-parser');
-var fp = require('./fingerprint.js');
 var request = require('request');
+
+var _fp = { }
+_fp.fp = require('./fingerprint.js');
 
 const publicPort = 8001;
 const privatePort = 8002;
@@ -15,7 +17,20 @@ publicApi.use(bodyParser.json());
 privateApi.use(bodyParser.json());
 
 /** FINGERPRINT **/
-fp.init();
+_fp.fp.init();
+
+/** DATABASE **/
+var MongoClient = require('mongodb').MongoClient;
+var assert = require('assert');
+
+// Connection URL
+var url = 'mongodb://localhost:27017/vetty';
+
+// Use connect method to connect to the server
+/*MongoClient.connect(url, function(err, db) {
+  assert.equal(null, err);
+  console.log("Connected successfully to server");
+});*/
 
 /** PUBLIC (END-USER) API **/
 
@@ -72,49 +87,61 @@ privateApi.post('/state', function(req, res) {
 
 privateApi.post('/wait/release', function(req, res) {
 	//Wait for finger to release
-	fp.waitRelease().then(() => {
+	_fp.fp.waitRelease().then(() => {
 		console.log("Released!")
 		res.send("OK");
 	}, (err) => {
-		res.send(fp.getError(err));
+		res.send(_fp.fp.getError(err));
 	});
 });
 privateApi.post('/led/off', function(req, res) {
-	fp.ledoff().then(() => {
+	_fp.fp.ledoff().then(() => {
 		res.send("OK");
 	}, (err) => {
-		res.send(fp.getError(err));
+		res.send(_fp.fp.getError(err));
 	});
 });
 privateApi.post('/reset', function(req, res) {
-	fp.reset().then(() => {
-		res.send("OK")
-	}, (err) => {
-		res.send(fp.getError(err));
-	});
+	_fp.fp.close().then(() => {
+		delete _fp.fp
+		console.log("Resetting...");
+		_fp.fp = require('./fingerprint.js')
+	})
+	.then(() => { console.log("Reinitializing..."); })
+	.then(() => { _fp.fp.init(); })
+	.then(() => { _fp.fp.ledoff(); })
+	.then(() => { res.send("OK") },
+		  (err) => { res.send(_fp.fp.getError(err)); })
 });
 privateApi.post('/register/1', function(req, res) {
-	fp.enroll1(2).then(() => {
+	_fp.fp.enroll1(2).then(() => {
 		console.log("Register phase 1 complete")
 		res.send("OK")
 	}, (err) => {
-		res.send(fp.getError(err));
+		res.send(_fp.fp.getError(err));
 	});
 });
 privateApi.post('/register/2', function(req, res) {
-	fp.enroll2().then(() => {
+	_fp.fp.enroll2().then(() => {
         console.log("Register phase 2 complete")
         res.send("OK")
     }, (err) => {
-        res.send(fp.getError(err));
+        res.send(_fp.fp.getError(err));
     });
 });
+
+addUser = function(data)
+{
+	
+}
+
 privateApi.post('/register/3', function(req, res) {
-	fp.enroll3().then(() => {
+	console.log(req.body)
+	_fp.fp.enroll3().then(() => {
         console.log("Register phase 3 complete")
         res.send("OK")
     }, (err) => {
-        res.send(fp.getError(err));
+        res.send(_fp.fp.getError(err));
     });
 });
 
