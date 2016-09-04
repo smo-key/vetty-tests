@@ -387,8 +387,34 @@ def stateChanged(state):
 	except Exception:
 		return False
 
+def ui_register_fp(count, text, subtext=""):
+	ui_fastclear(COLOR_GREEN800)
+	#Draw outside circle
+	pygame.draw.circle(SURFACE, pygame.Color(76,175,80), (240,120), 95)
+	#Draw inside circle
+	pygame.draw.circle(SURFACE, COLOR_GREEN800, (240,120), 85)
+	#Draw arc of completion
+	angle = 2 * math.pi / 3 * count
+	rect = pygame.Rect(145, 25, 190, 190)
+	pygame.draw.arc(SURFACE, COLOR_WHITE, rect,math.pi/2-angle,(math.pi/2) + (math.pi/180),10)
+
+	#Draw icon
+	str_icon = FONT_ICONS.render(u"\uf237",fgcolor=COLOR_WHITE, size=140)
+	str_icon[1].center = (240, 120)
+	lcd.blit(str_icon[0], str_icon[1])
+
+	#Draw text
+	str_text = FONT_LT.render(text, fgcolor=COLOR_WHITE, size=28)
+	str_text[1].center = (240, 260)
+	lcd.blit(str_text[0], str_text[1])
+
+	#Draw subtext
+	str_sub = FONT_LT.render(subtext, fgcolor=pygame.Color(255,255,255,190), size=20)
+	str_sub[1].center = (240, 296)
+	lcd.blit(str_sub[0], str_sub[1])
+
 def ui_register():
-	phase = 0
+	phase = 10 #0
 	firstName = None
 	lastName = None
 	stuId = None
@@ -447,14 +473,17 @@ def ui_register():
 			elif len(stuId) < 7 and len(stuId) > 0:
 				#Not valid student ID
 				invalidId = True
-				pass
 			else:
-				phase = 11
-		#elif phase is 11:
-		#	pass	
+				phase = 10
+		elif phase is 10:
+			#Draw fingerprint
+			ui_clear(COLOR_GREEN800)
+			ui_register_fp(0, "Press and hold finger firmly", "You may only record one finger")
+			update()
+			time.sleep(3)
+			phase = 20
 
-
-		elif phase is 11:
+		elif phase is 20:
 			print "Done!"
 			print firstName
 			print lastName
