@@ -1,10 +1,10 @@
 import pygame
 import os
 import time
+import re
 import pygame.freetype as freetype
 import pygame.font as font
 from pygame.locals import *
-import time
 from time import strftime
 import threading
 import sys
@@ -324,24 +324,70 @@ def ui_draw_textbox(color, toptext, helptext):
 	lcd.blit(str_top[0], str_top[1])
 	lcd.blit(str_bottom[0], str_bottom[1])
 
-def getKeyboardString():
+def getKeyboardString(allowcancel, regex):
 	s = ""
-	while True:
-		event = pygame.event.wait()
-		print event
-		print event.type
-	return c
+	test = re.compile(regex)
+	done = False
+	pygame.event.clear()
+	while not done:
+		while True:
+			while not pygame.event.peek(2):
+				time.sleep(0.01)
+			event = pygame.event.get(2)[0]
+			pygame.event.clear()
+			#print event.__dict__
+			code = event.__dict__['key']
+			char = event.__dict__['unicode']
+			if (code is 13) and (len(s) > 0):
+				#enter key
+				done = True
+				break
+			elif (code is 27) and allowcancel:
+				#escape
+				done = True
+				s = ""
+				break
+			elif (code is 8) and (len(s) > 0):
+				#backspace
+				s = s[:-1]
+			#rest is actual characters
+			elif (test.match(char) is None) or (test.match(s + char) is None):
+				#don't allow this character because it would fail to pass the regex
+				continue
+			elif code >= 97 and code <= 122:
+				s += char
+			elif code is 32:
+				s += char
+			elif code is 45:
+				s += char
+			elif code >= 48 and code <= 57:
+				s += char
+			else:
+				continue
+			#print s + " (" + char + ")"
+
+			#Draw the string!
+			rect = pygame.Rect(64, 116, 352, 40)
+			lcd.fill(COLOR_WHITE, rect)
+
+			str = FONT_LT.render(s, fgcolor=COLOR_BLACK, size=24)
+			str[1].center = (80, 136)
+			str[1].left = 72
+
+			lcd.blit(str[0], str[1])
+			update()
+	return s
 
 def ui_register():
 	ui_clear(COLOR_GREEN800)
 	for alpha in (50, 100, 150, 200, 230, 255):
 		white = COLOR_WHITE
 		white.a = alpha
-		ui_title(white, COLOR_GREEN800, "Register", u"\uf014")
-		ui_draw_textbox(white, "Enter your first name", "Press the ENTER key when you're done or ESC to go back")	
+		ui_title(white, COLOR_GREEN800, "Register", u"\uf014") #f014
+		ui_draw_textbox(white, "Enter your LEGAL FULL name", "Press the ENTER key when you're done or ESC to go back")	
 		update()
 		time.sleep(0.01)
-	print getKeyboardString()
+	print getKeyboardString(True, "^[A-Za-z -]*$")
 	print "Done!"
 	return
 
