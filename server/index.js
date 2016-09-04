@@ -8,7 +8,7 @@ var request = require('request');
 const publicPort = 8001;
 const privatePort = 8002;
 
-var state = "Register";//"Normal";
+var state = "Register";//"Normal or Register";
 
 //Process JSON
 publicApi.use(bodyParser.json());

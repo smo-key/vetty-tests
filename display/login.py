@@ -328,7 +328,7 @@ def ui_draw_textbox(color, toptext, helptext):
 	lcd.blit(str_top[0], str_top[1])
 	lcd.blit(str_bottom[0], str_bottom[1])
 
-def getKeyboardString(allowcancel, regex):
+def getKeyboardString(allowcancel, regex, skipchar=-1, skipresult=""):
 	s = ""
 	test = re.compile(regex)
 	pygame.event.clear()
@@ -350,6 +350,10 @@ def getKeyboardString(allowcancel, regex):
 			#backspace
 			s = s[:-1]
 		#rest is actual characters
+		elif (code == skipchar):
+			#skip
+			print "Skipping!"
+			return skipresult
 		elif (test.match(char) is None) or (test.match(s + char) is None):
 			#don't allow this character because it would fail to pass the regex
 			continue
@@ -375,30 +379,46 @@ def getKeyboardString(allowcancel, regex):
 		update()
 	return s
 
-def ui_register():
+def stateChanged(state):
+	try:
+		#check the server status and change state appropriately
+		r = requests.get('http://localhost:8002/state')
+		return not (state == r.text)
+	except Exception:
+		return False
 
-	phase = 1
+def ui_register():
+	phase = 0
 	firstName = None
 	lastName = None
 	stuId = None
 	invalidId = False
 	while True:
-		if phase is 1:
-			#Get first name
+		if phase is 0:
+			#Draw animation
 			ui_clear(COLOR_GREEN800)
-			for alpha in (50, 100, 150, 200, 230, 255):
+			for alpha in (50, 100, 150, 200, 230):
 				white = COLOR_WHITE
 				white.a = alpha
 				ui_fastclear(COLOR_GREEN800)
 				ui_title(white, COLOR_GREEN800, "Register", u"\uf014") #f014
-				ui_draw_textbox(white, "Enter your first name", "Press the ENTER key when you're done or ESC to reset")	
+				ui_draw_textbox(white, "Enter your first name", "Press the ENTER key when you're done or ESC to reset")
 				update()
 				time.sleep(0.01)
+			phase = 1
+		if phase is 1:
+			#Get first name
+			ui_fastclear(COLOR_GREEN800)
+			ui_title(white, COLOR_GREEN800, "Register", u"\uf014") #f014
+			ui_draw_textbox(COLOR_WHITE, "Enter your first name", "Press the ENTER key when you're done or ESC to reset")	
+			update()
 			firstName = getKeyboardString(True, "^[A-Za-z\\-]{0,24}$")
 			if firstName is None:
-				return
-			firstName = firstName.title()
-			phase = 2
+				if stateChanged("Register"):
+					return
+			else:
+				firstName = firstName.title()
+				phase = 2
 		elif phase is 2:
 			#Get last name
 			ui_fastclear(COLOR_GREEN800)
@@ -416,20 +436,24 @@ def ui_register():
 			#Get student ID
 			ui_fastclear(COLOR_GREEN800)
 			ui_title(COLOR_WHITE, COLOR_GREEN800, "Almost ready, " + firstName, u"\uf014")
-			helptext = "Press the ENTER key when you're done or ESC to go back"
+			helptext = "If you don't have one, press the SPACEBAR to skip."
 			if invalidId:
 				helptext = "Invalid student or teacher ID."
 			ui_draw_textbox(COLOR_WHITE, "Enter your student or teacher ID", helptext)
 			update()
-			stuId = getKeyboardString(True, "^[0-9]{0,9}$")
+			stuId = getKeyboardString(True, "^[0-9]{0,9}$", 32, "")
 			if stuId is None:
 				phase = 2
-			elif len(stuId) < 7:
+			elif len(stuId) < 7 and len(stuId) > 0:
 				#Not valid student ID
 				invalidId = True
 				pass
 			else:
 				phase = 11
+		#elif phase is 11:
+		#	pass	
+
+
 		elif phase is 11:
 			print "Done!"
 			print firstName
@@ -443,8 +467,8 @@ def updateState(state):
 		r = requests.get('http://localhost:8002/state')
 		text = r.text
 		#print text
-		if (text == "Normal") and (state > 10):
-			state = -1
+		if (text == "Normal") and (state >= 10):
+			state = -2
 		elif (text == "Register") and (state < 10 or state >= 20):
 			state = 10
 		#print text + " " + str(state)
@@ -457,6 +481,10 @@ def ui_main():
 	state = -1
 
 	while True:
+		if state is -2:
+			#Clear screen
+			ui_clear(COLOR_BLUE900)
+			state = -1
 		if state is -1:
 			#Draw start icon
 			drawBigIcon(u"\uf341")
