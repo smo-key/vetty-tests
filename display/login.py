@@ -479,15 +479,51 @@ def ui_register():
 			#Draw fingerprint
 			ui_clear(COLOR_GREEN800)
 			ui_register_fp(0, "Press and hold finger firmly", "You may only record one finger")
-			update()
-			time.sleep(3)
-			phase = 20
+			update()			
+
+			#Start enrollment
+			r = None
+			count = 0
+			while count < 3:
+				if ((r is not None) and r.text != "OK"):
+					count = 0
+					ui_register_fp(count, "Lift finger and try again", "Hold your finger firmly on the pad")
+					update()
+				elif ((r is not None) and r.text == "OK"):
+					if count is 1:
+						ui_register_fp(count, "Rotate finger slightly left and place", "Hold finger firmly on the pad")
+					elif count is 2:
+						ui_register_fp(count, "Rotate finger slightly right and place", "Hold finger firmly on the pad")
+					update()
+				r = requests.post('http://localhost:8002/register/' + str(int(count + 1)), data={ })
+				print r.text
+				if (r.text == "OK"):
+					count += 1
+					ui_register_fp(count - 0.5, "Lift your finger now", "")
+					update()
+					d = requests.post('http://localhost:8002/wait/release', data={ })
+					print "Release: " + d.text
+				else:
+					print "Enroll " + str(count) + ": " + r.text
+					if ("finger_timeout!" in r.text):				
+						f = requests.post('http://localhost:8002/led/off', data={ })
+						print "Led OFF: " + f.text
+						return
+					elif ("timeout!" in r.text):
+						f = requests.post('http://localhost:8002/reset', data = { })
+						print "Reset: " + f.text
+						return
+
+			#Add to database
+
+			print "Done!"
+			return
 
 		elif phase is 20:
-			print "Done!"
-			print firstName
-			print lastName
-			print stuId
+			#print "Done!"
+			#print firstName
+			#print lastName
+			#print stuId
 			return
 
 def updateState(state):

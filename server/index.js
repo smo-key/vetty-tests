@@ -2,7 +2,7 @@ var express = require('express');
 var publicApi = express();
 var privateApi = express();
 var bodyParser = require('body-parser');
-var fingerprint = require('./fingerprint.js');
+var fp = require('./fingerprint.js');
 var request = require('request');
 
 const publicPort = 8001;
@@ -13,6 +13,9 @@ var state = "Register";//"Normal or Register";
 //Process JSON
 publicApi.use(bodyParser.json());
 privateApi.use(bodyParser.json());
+
+/** FINGERPRINT **/
+fp.init();
 
 /** PUBLIC (END-USER) API **/
 
@@ -60,11 +63,59 @@ privateApi.post('/login', function(req, res) {
 privateApi.get('/state', function(req, res) {
 	res.send(state);
 });
+
+/*
 privateApi.post('/state', function(req, res) {
 	//TODO set state here
 });
-privateApi.post('/users/add', function(req, res) {
-	//TODO add a new user after registration
+*/
+
+privateApi.post('/wait/release', function(req, res) {
+	//Wait for finger to release
+	fp.waitRelease().then(() => {
+		console.log("Released!")
+		res.send("OK");
+	}, (err) => {
+		res.send(fp.getError(err));
+	});
+});
+privateApi.post('/led/off', function(req, res) {
+	fp.ledoff().then(() => {
+		res.send("OK");
+	}, (err) => {
+		res.send(fp.getError(err));
+	});
+});
+privateApi.post('/reset', function(req, res) {
+	fp.reset().then(() => {
+		res.send("OK")
+	}, (err) => {
+		res.send(fp.getError(err));
+	});
+});
+privateApi.post('/register/1', function(req, res) {
+	fp.enroll1(2).then(() => {
+		console.log("Register phase 1 complete")
+		res.send("OK")
+	}, (err) => {
+		res.send(fp.getError(err));
+	});
+});
+privateApi.post('/register/2', function(req, res) {
+	fp.enroll2().then(() => {
+        console.log("Register phase 2 complete")
+        res.send("OK")
+    }, (err) => {
+        res.send(fp.getError(err));
+    });
+});
+privateApi.post('/register/3', function(req, res) {
+	fp.enroll3().then(() => {
+        console.log("Register phase 3 complete")
+        res.send("OK")
+    }, (err) => {
+        res.send(fp.getError(err));
+    });
 });
 
 

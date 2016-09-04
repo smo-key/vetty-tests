@@ -9,29 +9,14 @@ exports.init = function() {
 		function() {
 	        	//init ok
 		        console.log('Firmware version: ' + fps.firmwareVersion);
-	       		console.log('Iso area max: ' + fps.isoAreaMaxSize);
+	       		//console.log('Iso area max: ' + fps.isoAreaMaxSize);
 		        console.log('Device serial number: ' + fps.deviceSerialNumber);
 			fps.getEnrollCount().then(function(count) {
   				console.log("Enrolled fingerprints count: " + count);
-				/*console.log("Starting enrollment...");
-				enroll(1)
-				.then(function() { console.log("Getting enroll count..."); return fps.getEnrollCount(); })
-				.then(function(count) { return console.log("Enrolled fingerprints: " + count); })
-				.then(function() { console.log("Starting identification..."); return identify(); })
-				*/
-				identify()
-				.then(function() {
-					console.log("All done!");
-					fps.ledONOFF(0);
-				}, function(err) {
-					fps.ledONOFF(0);
-					console.error(fps.decodeError(err) + " (" + err + ")");
-				});
-    			},
-    			function(err) {
-        			console.log('Init error: ' + err);
-    			});
-		});
+			}).then(function() { fps.ledONOFF(0); }).then(function() {
+				console.log("Init complete!")
+			});
+		}).then(function() { resolve(); });
 	}));
 }
 
@@ -41,7 +26,11 @@ function delay_ms(ms) {
     }));
 }
 
-var identify = function() {
+exports.getError = function(code) {
+	return fps.decodeError(code) + " (" + code + ")"
+}
+
+exports.identify = function() {
 	return (new Promise(function(resolve, reject){
 		fps.ledONOFF(1)
 		.then(function() { return fps.waitReleaseFinger(10000); })
@@ -59,7 +48,37 @@ var identify = function() {
 	}));
 }
 
-var deleteID = function(id) {
+recreateFps = function() {
+	return (new Promise(function(resolve, reject) {
+		console.log("Recreating FPS...")
+		fps = new GT511C3('/dev/ttyAMA0', { baudrate: 9600, debug: true })
+		resolve()
+	}));
+}
+
+exports.reset = function() {
+	return (new Promise(function(resolve, reject) {
+		fps.closePort()
+		.then(recreateFps)
+		.then(() => { return fps.init();})
+		//.then(() => { return fps.ledONOFF(0); })
+		.then(() => { resolve(); },
+			  (err) => { reject(err); })
+	}));
+}
+
+exports.ledoff = function(id) {
+    return (new Promise(function(resolve, reject){
+        fps.ledONOFF(0).then(function() {
+            resolve();
+        }, function(err) {
+            reject(err);
+        });
+    }));
+}
+
+
+exports.deleteID = function(id) {
 	return (new Promise(function(resolve, reject){		
 		fps.deleteID(id).then(function() {
 			console.log("ID Deleted!");
@@ -71,7 +90,7 @@ var deleteID = function(id) {
 	}));
 }
 
-var enroll = function(ID) {
+exports.enroll = function(ID) {
     return (new Promise(function(resolve, reject) {
       var errorHandler = function(err) {
         reject(err);
@@ -145,4 +164,149 @@ var enroll = function(ID) {
     }));
 }
 
-//exports.init()
+exports.enroll1 = function(ID) {
+    return (new Promise(function(resolve, reject) {
+      var errorHandler = function(err) {
+        reject(err);
+      }
+      var start = function() {
+        return fps.enrollStart(ID)
+      }
+      var capture = function() {
+        return fps.captureFinger(fps.BEST_IMAGE);
+      };
+      var waitFinger = function() {
+        return fps.waitFinger(10000);
+      };
+      var ledON = function() {
+        return fps.ledONOFF(1);
+      }
+      var ledOFF = function() {
+        return fps.ledONOFF(0);
+      }
+
+      exports.deleteID(ID)
+        .then(ledON)
+		.then(waitFinger)
+        .then(start)
+        .then(capture)
+        .then(function() {
+          return fps.enroll1();
+        })
+        .then(ledOFF)
+      .then(function() {
+        resolve();
+      }, function(err) {
+        ledOFF();
+		//console.err("Enroll 1: " + exports.getError(err))
+        reject(err);
+      });
+	}));
+}
+
+exports.enroll2 = function() {
+    return (new Promise(function(resolve, reject) {
+      var errorHandler = function(err) {
+        reject(err);
+      }
+      var start = function() {
+        return fps.enrollStart(ID)
+      }
+      var capture = function() {
+        return fps.captureFinger(fps.BEST_IMAGE);
+      };
+      var waitFinger = function() {
+        return fps.waitFinger(10000);
+      };
+      var ledON = function() {
+        return fps.ledONOFF(1);
+      }
+      var ledOFF = function() {
+        return fps.ledONOFF(0);
+      }
+      
+	  ledON()
+      	.then(waitFinger)
+        .then(capture)
+        .then(function() {
+          return fps.enroll2();
+        })
+        .then(ledOFF)
+      .then(function() {
+        resolve();
+      }, function(err) {
+        ledOFF();
+		//console.err("Enroll 2: " + exports.getError(err))
+        reject(err);
+      });
+    }));
+}
+
+exports.enroll3 = function() {
+    return (new Promise(function(resolve, reject) {
+      var errorHandler = function(err) {
+        reject(err);
+      }
+      var start = function() {
+        return fps.enrollStart(ID)
+      }
+      var capture = function() {
+        return fps.captureFinger(fps.BEST_IMAGE);
+      };
+      var waitFinger = function() {
+        return fps.waitFinger(10000);
+      };
+      var ledON = function() {
+        return fps.ledONOFF(1);
+      }
+      var ledOFF = function() {
+        return fps.ledONOFF(0);
+      }
+
+      ledON()
+        .then(waitFinger)
+        .then(capture)
+        .then(function() {
+          return fps.enroll3();
+        })
+        .then(ledOFF)
+      .then(function() {
+        resolve();
+      }, function(err) {
+        ledOFF();
+		//console.err("Enroll 3: " + exports.getError(err))
+        reject(err);
+      });
+    }));
+}
+
+
+exports.waitRelease = function() {
+    return (new Promise(function(resolve, reject) {
+      var errorHandler = function(err) {
+        reject(err);
+      }
+      var capture = function() {
+        return fps.captureFinger(fps.BEST_IMAGE);
+      };
+      var waitReleaseFinger = function() {
+        return fps.waitReleaseFinger(10000);
+      };
+      var ledON = function() {
+        return fps.ledONOFF(1);
+	  }
+      var ledOFF = function() {
+        return fps.ledONOFF(0);
+      }
+
+	  ledON()
+	  .then(waitReleaseFinger)
+	  .then(ledOFF)
+      .then(function() {
+        resolve();
+      }, function(err) {
+        ledOFF();
+        reject(err);
+      });
+    }));
+}
