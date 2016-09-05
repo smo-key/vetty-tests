@@ -33,18 +33,26 @@ exports.getError = function(code) {
 exports.identify = function() {
 	return (new Promise(function(resolve, reject){
 		fps.ledONOFF(1)
-		.then(function() { return fps.waitReleaseFinger(10000); })
-		.then(function() { return fps.waitFinger(10000); })
+		//.then(function() { return fps.waitReleaseFinger(10000); })
+		.then(function() { return fps.waitFinger(2000); })
 		.then(function() { return fps.captureFinger(); })
 		.then(function() { return fps.identify(); })
+		.then(function() { return fps.ledONOFF(0); })
 		.then(function(id) {
 			console.log("Logged in as " + id);
-			fps.ledONOFF(0);
-			resolve();
+			resolve(id);
 		}, function(err) {
-			//fps.ledONOFF(0);
 			reject(err);
 		});
+	}));
+}
+
+exports.ispressed = function() {
+	return (new Promise(function(resolve, reject){
+		fps.ledONOFF(1)
+		.then(() => { return fps.isPressFinger(); })
+		.then(() => { resolve(true); },
+		      (err) => { resolve(false); });
 	}));
 }
 
@@ -63,24 +71,6 @@ exports.close = function() {
 		fps.closePort()
 		.then(() => { resolve(); },
 			  (err) => { reject(err); })	
-	}));
-}
-
-exports.reset = function() {
-	delete fps
-	fps = new GT511C3('/dev/ttyAMA0', { baudrate: 115200, debug: true })
-	return (new Promise(function(resolve, reject) {
-		fps.init()
-		//fps.closePort()
-		//.then(recreateFps)
-		//.then(() => { return fps.setPort('/dev/ttyAMA0', 115200); })
-		//.then(() => { return fps.open(fps.EXTRA_INFO); })
-		//.then(recreateFps)
-		//.then(() => { return fps.open(); })
-		//.then(() => { return fps.init();})
-		//.then(() => { return fps.ledONOFF(0); })
-		.then(() => { resolve(); },
-			  (err) => { reject(err); })
 	}));
 }
 

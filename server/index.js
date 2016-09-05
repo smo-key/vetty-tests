@@ -72,7 +72,21 @@ publicApi.post('/api/users/list', function(req, res) {
 privateApi.post('/login', function(req, res) {
 	var fpId = req.body.fpId;
 	
+	_fp.fp.identify().then((id) => {
+		res.send("OK " + id);
+	}, (err) => {
+		res.send(_fp.fp.getError(err));
+	});
+
 	//TODO Respond with successful?, message, out?, timeIn, timeOut, hours, name, userId
+});
+
+privateApi.get('/pressed', function(req, res) {
+	_fp.fp.ispressed().then((pressed) => {
+		res.send(pressed ? "True" : "False");
+	}, (err) => {
+		res.send(_fp.fp.getError(err));
+	});
 });
 
 privateApi.get('/state', function(req, res) {
@@ -88,7 +102,6 @@ privateApi.post('/state', function(req, res) {
 privateApi.post('/wait/release', function(req, res) {
 	//Wait for finger to release
 	_fp.fp.waitRelease().then(() => {
-		console.log("Released!")
 		res.send("OK");
 	}, (err) => {
 		res.send(_fp.fp.getError(err));
@@ -101,18 +114,6 @@ privateApi.post('/led/off', function(req, res) {
 		res.send(_fp.fp.getError(err));
 	});
 });
-/*privateApi.post('/reset', function(req, res) {
-	_fp.fp.close().then(() => {
-		delete _fp.fp
-		console.log("Resetting...");
-		_fp.fp = require('./fingerprint.js')
-	})
-	.then(() => { console.log("Reinitializing..."); })
-	.then(() => { _fp.fp.init(); })
-	.then(() => { _fp.fp.ledoff(); })
-	.then(() => { res.send("OK") },
-		  (err) => { res.send(_fp.fp.getError(err)); })
-});*/
 privateApi.post('/register/1', function(req, res) {
 	_fp.fp.enroll1(2).then(() => {
 		console.log("Register phase 1 complete")

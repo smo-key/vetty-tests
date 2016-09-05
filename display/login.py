@@ -427,13 +427,13 @@ def ui_register():
 	while True:
 		if phase is 0:
 			#Draw animation
-			ui_clear(COLOR_GREEN800)
+			ui_clear(COLOR_GREEN800, touch_coord())
 			for alpha in (50, 100, 150, 200, 230):
 				white = COLOR_WHITE
 				white.a = alpha
 				ui_fastclear(COLOR_GREEN800)
 				ui_title(white, COLOR_GREEN800, "Register", u"\uf014") #f014
-				ui_draw_textbox(white, "Enter your first name", "Press the ENTER key when you're done or ESC to reset")
+				ui_draw_textbox(white, "Enter your first name", "Press the ENTER key when you're done or ESC to cancel")
 				update()
 				time.sleep(0.01)
 			phase = 1
@@ -445,12 +445,11 @@ def ui_register():
 			update()
 			firstName = getKeyboardString(True, "^[A-Za-z\\-]{0,24}$")
 			if firstName is None:
-				if stateChanged("Register"):
-					return
+				return
 			else:
 				firstName = firstName.title()
 				phase = 2
-		elif phase is 2:
+		if phase is 2:
 			#Get last name
 			ui_fastclear(COLOR_GREEN800)
 			ui_title(COLOR_WHITE, COLOR_GREEN800, "Hi, " + firstName, u"\uf014")
@@ -463,7 +462,7 @@ def ui_register():
 				lastName = lastName.title()
 				invalidId = False
 				phase = 3
-		elif phase is 3:
+		if phase is 3:
 			#Get student ID
 			ui_fastclear(COLOR_GREEN800)
 			ui_title(COLOR_WHITE, COLOR_GREEN800, "Almost ready, " + firstName, u"\uf014")
@@ -480,11 +479,11 @@ def ui_register():
 				invalidId = True
 			else:
 				phase = 10
-		elif phase is 10:
+		if phase is 10:
 			#Draw fingerprint
 			ui_clear(COLOR_GREEN800)
 			ui_register_fp(0, "Press and hold finger firmly", "You may only record one finger")
-			update()			
+			update()
 
 			#Start enrollment
 			r = None
@@ -523,13 +522,6 @@ def ui_register():
 			print "Done!"
 			return
 
-		elif phase is 20:
-			#print "Done!"
-			#print firstName
-			#print lastName
-			#print stuId
-			return
-
 def get_ip_address():
 	s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 	s.connect(("8.8.8.8", 80))
@@ -553,12 +545,24 @@ def ui_login_updatetime(bgcolor):
 	lcd.blit(str_time[0], str_time[1])
 	lcd.blit(str_timeap[0], str_timeap[1])
 
+def ui_login_updatetext(bgcolor, text, color=pygame.Color(255,255,255,200), textsize=20):
+	#Draw text
+	str_sub = FONT_LT.render(text, fgcolor=color, size=textsize)
+	str_sub[1].center = (240, 260)
+	lcd.blit(str_sub[0], str_sub[1])
+	
+	blit_clear = pygame.Rect(0, str_sub[1].top - 8, 480, str_sub[1].height + 16)
+
+	#Blit
+	lcd.fill(bgcolor, blit_clear)
+	lcd.blit(str_sub[0], str_sub[1])
+
 def ui_login():
 	phase = 0
 	while True:
 		if phase is 0:
 			#Draw animation
-			ui_clear(COLOR_BLUE900)
+			ui_clear(COLOR_BLUE900, touch_coord())
 			#for alpha in (50, 100, 150, 200, 230):
 			#	white = COLOR_WHITE
 			#	white.a = alpha
@@ -573,9 +577,7 @@ def ui_login():
 			ui_register_fp(0, '', "", COLOR_BLUE900, pygame.Color(24,90,188).correct_gamma(GAMMA))
 			
 			#Draw text
-			str_sub = FONT_LT.render("Place finger on pad or tap again to register", fgcolor=pygame.Color(255,255,255,190), size=20)
-			str_sub[1].center = (240, 260)
-			lcd.blit(str_sub[0], str_sub[1])
+			ui_login_updatetext(COLOR_BLUE900, "Place finger on pad or touch screen to register")			
 			
 			#Draw time
 			ui_login_updatetime(COLOR_BLUE900)
@@ -588,11 +590,54 @@ def ui_login():
 
 			update()
 
-			#Activate fingerprint
-			
+			#Activate fingerprint and touchscreen
+			bgcolor = COLOR_BLUE900
+			while True:
+				p = False #fp pressed
+				t = False #touchscreen touched
+				while (not p) and (not t):
+					if (touch.hasUpdate() is True):
+						press = touch.getState()[2]
+						if (press is 1 or press is 3):	
+							t = True
+				
+					try:
+						r = requests.get('http://localhost:8002/pressed')
+						print r.text
+						if (r.text == "True"):
+							p = True
+					except:
+						ui_login_updatetext(bgcolor, "Fingerprint sensor not ready", textsize=24)
 
-			time.sleep(5)
-			return -2
+					#Draw things to screen	
+					ui_login_updatetime(bgcolor)
+					update()
+				
+				if t:
+					#Turn FPS LED off
+					try:
+						r = requests.post('http://localhost:8002/led/off', data={ })
+						print "LED OFF: " + r.text
+					except:
+						pass
+					
+					#Go to register screen
+					return 20
+
+				if p:
+					#Identify
+					r = requests.post('http://localhost:8002/login', data={ })
+					print r.text
+					if (r.text[:2] == "OK"):
+						id = int(r.text[3:])
+						print "Logged in as " + str(id)
+
+						#Go to success screen
+						return -2
+					else:
+						ui_login_updatetext(bgcolor, "Try again", COLOR_WHITE, 32)						
+				
+				usleep(10000) #100ms
 
 	#Return to start screen
 	return -2
