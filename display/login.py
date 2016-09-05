@@ -15,6 +15,7 @@ from PyTouch.pytouch import TouchThread as TouchThread
 from timeit import default_timer as timer
 import requests
 import subprocess
+import socket
 
 GAMMA = 2
 COLOR_BLUE900 = pygame.Color(13,71,161).correct_gamma(GAMMA)
@@ -388,16 +389,17 @@ def stateChanged(state):
 	except Exception:
 		return False
 
-def ui_register_fp(count, text, subtext=""):
-	ui_fastclear(COLOR_GREEN800)
+def ui_register_fp(count, text, subtext="", bgcolor=COLOR_GREEN800, fgcolor=pygame.Color(76,175,80)):
+	ui_fastclear(bgcolor)
 	#Draw outside circle
-	pygame.draw.circle(SURFACE, pygame.Color(76,175,80), (240,120), 95)
+	pygame.draw.circle(SURFACE, fgcolor, (240,120), 95)
 	#Draw inside circle
-	pygame.draw.circle(SURFACE, COLOR_GREEN800, (240,120), 85)
+	pygame.draw.circle(SURFACE, bgcolor, (240,120), 85)
 	#Draw arc of completion
-	angle = 2 * math.pi / 3 * count
-	rect = pygame.Rect(145, 25, 190, 190)
-	pygame.draw.arc(SURFACE, COLOR_WHITE, rect,math.pi/2-angle,(math.pi/2) + (math.pi/180),10)
+	if count > 0:
+		angle = 2 * math.pi / 3 * count
+		rect = pygame.Rect(145, 25, 190, 190)
+		pygame.draw.arc(SURFACE, COLOR_WHITE, rect,math.pi/2-angle,(math.pi/2) + (math.pi/180),10)
 
 	#Draw icon
 	str_icon = FONT_ICONS.render(u"\uf237",fgcolor=COLOR_WHITE, size=140)
@@ -405,17 +407,19 @@ def ui_register_fp(count, text, subtext=""):
 	lcd.blit(str_icon[0], str_icon[1])
 
 	#Draw text
-	str_text = FONT_LT.render(text, fgcolor=COLOR_WHITE, size=28)
-	str_text[1].center = (240, 260)
-	lcd.blit(str_text[0], str_text[1])
+	if len(text) > 0:
+		str_text = FONT_LT.render(text, fgcolor=COLOR_WHITE, size=28)
+		str_text[1].center = (240, 260)
+		lcd.blit(str_text[0], str_text[1])
 
 	#Draw subtext
-	str_sub = FONT_LT.render(subtext, fgcolor=pygame.Color(255,255,255,190), size=20)
-	str_sub[1].center = (240, 296)
-	lcd.blit(str_sub[0], str_sub[1])
+	if len(subtext) > 0:
+		str_sub = FONT_LT.render(subtext, fgcolor=pygame.Color(255,255,255,190), size=20)
+		str_sub[1].center = (240, 296)
+		lcd.blit(str_sub[0], str_sub[1])
 
 def ui_register():
-	phase = 10 #0
+	phase = 0
 	firstName = None
 	lastName = None
 	stuId = None
@@ -516,8 +520,6 @@ def ui_register():
 						print "Led OFF: " + f.text
 						return
 
-			#Add to database
-
 			print "Done!"
 			return
 
@@ -527,6 +529,73 @@ def ui_register():
 			#print lastName
 			#print stuId
 			return
+
+def get_ip_address():
+	s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+	s.connect(("8.8.8.8", 80))
+	return s.getsockname()[0]
+
+def ui_login_updatetime(bgcolor):
+	#Draw time
+	str_time = FONT_LT.render(strftime("%I:%M"), fgcolor=pygame.Color(255,255,255,255), size=26)
+	str_time[1].bottom = 312
+	str_time[1].left = 8
+
+	str_timeap = FONT_LT.render(strftime("%p"), fgcolor=pygame.Color(255,255,255,255), size=18)
+	str_timeap[1].bottom = str_time[1].bottom
+	str_timeap[1].left = str_time[1].right + 6
+
+	blit_clear = pygame.Rect(0, str_time[1].top + 8,
+     str_time[1].width + str_timeap[1].width + 30, 320 - str_time[1].top - 8)
+	
+	#Blit
+	lcd.fill(bgcolor, blit_clear)
+	lcd.blit(str_time[0], str_time[1])
+	lcd.blit(str_timeap[0], str_timeap[1])
+
+def ui_login():
+	phase = 0
+	while True:
+		if phase is 0:
+			#Draw animation
+			ui_clear(COLOR_BLUE900)
+			#for alpha in (50, 100, 150, 200, 230):
+			#	white = COLOR_WHITE
+			#	white.a = alpha
+			#	ui_fastclear(COLOR_BLUE900)
+			#	
+			#	update()
+			#	time.sleep(0.01)
+			phase = 1
+		if phase is 1:
+			#Main screen - wait for touch or fingerprint
+			ui_fastclear(COLOR_BLUE900)
+			ui_register_fp(0, '', "", COLOR_BLUE900, pygame.Color(24,90,188).correct_gamma(GAMMA))
+			
+			#Draw text
+			str_sub = FONT_LT.render("Place finger on pad or tap again to register", fgcolor=pygame.Color(255,255,255,190), size=20)
+			str_sub[1].center = (240, 260)
+			lcd.blit(str_sub[0], str_sub[1])
+			
+			#Draw time
+			ui_login_updatetime(COLOR_BLUE900)
+
+			#Draw IP
+			str_ip = FONT_LT.render(get_ip_address(), fgcolor=pygame.Color(255,255,255,120), size=14)
+			str_ip[1].right = 474
+			str_ip[1].bottom = 312
+			lcd.blit(str_ip[0], str_ip[1])
+
+			update()
+
+			#Activate fingerprint
+			
+
+			time.sleep(5)
+			return -2
+
+	#Return to start screen
+	return -2
 
 def updateState(state):
 	try:
@@ -565,16 +634,19 @@ def ui_main():
 				if (press is 1 or press is 3):
 					state = 1
 		if state is 1:
+			#Draw login/register screen
+			state = ui_login()
+		if state is 10:
 			#Draw login numpad
 			ui_clear(COLOR_BLUE900, touch_coord())
 			result = ui_numpad()
 			ui_clear(COLOR_BLUE900, touch_coord())
 			state = -1
-		if state is 10:
+		if state is 20:
 			#Register
-			#print "Running registration"
 			ui_register()
-		state = updateState(state)
+			state = 1 #Go to login
+		#state = updateState(state)
 		usleep(25000) #250ms
 
 def exitThreads():

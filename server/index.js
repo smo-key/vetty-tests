@@ -10,7 +10,7 @@ _fp.fp = require('./fingerprint.js');
 const publicPort = 8001;
 const privatePort = 8002;
 
-var state = "Register";//"Normal or Register";
+var state = "Normal";//"Normal or Register";
 
 //Process JSON
 publicApi.use(bodyParser.json());
@@ -101,7 +101,7 @@ privateApi.post('/led/off', function(req, res) {
 		res.send(_fp.fp.getError(err));
 	});
 });
-privateApi.post('/reset', function(req, res) {
+/*privateApi.post('/reset', function(req, res) {
 	_fp.fp.close().then(() => {
 		delete _fp.fp
 		console.log("Resetting...");
@@ -112,7 +112,7 @@ privateApi.post('/reset', function(req, res) {
 	.then(() => { _fp.fp.ledoff(); })
 	.then(() => { res.send("OK") },
 		  (err) => { res.send(_fp.fp.getError(err)); })
-});
+});*/
 privateApi.post('/register/1', function(req, res) {
 	_fp.fp.enroll1(2).then(() => {
 		console.log("Register phase 1 complete")
