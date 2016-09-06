@@ -16,6 +16,7 @@ from timeit import default_timer as timer
 import requests
 import subprocess
 import socket
+import evdev
 
 GAMMA = 2
 COLOR_BLUE900 = pygame.Color(13,71,161).correct_gamma(GAMMA)
@@ -109,6 +110,8 @@ touch = TouchThread(debug=True, device="/dev/input/event0")
 touch.start()
 threads.append(touch)
 
+touch_state_reset = False
+
 #Wait for touch thread
 while(not touch.isInitialized()):
 	if (touch.hasError()):
@@ -118,13 +121,30 @@ while(not touch.isInitialized()):
 print "READY!"
 
 def touch_coord():
+	global touch_state_reset
 	if (not touch.isInitialized() or touch.hasError()):
 		return (240, 160)
-	state = touch.getState()
-	return (state[0], state[1])
+	if (touch_state_reset):
+		touch_state_reset = False
+		return (240, 160)
+	else:
+		state = touch.getState()
+		return (state[0], state[1])
+
+def touch_reset():
+	global touch_state_reset
+	state = (240, 160)
+	touch_state_reset = True
 
 #Enable VSync
 enable_vsync()
+
+def keyboardAttached():
+	devices = [evdev.InputDevice(fn) for fn in evdev.list_devices()]
+	for device in devices:
+		if ("Keyboard" in device.name):
+			return True
+	return False
 
 def ui_clear(color=COLOR_BLUE900, pos=(240,160)):
 	r = (10, 20, 40, 70, 110, 160, 240, 320)
@@ -381,13 +401,13 @@ def getKeyboardString(allowcancel, regex, skipchar=-1, skipresult=""):
 		update()
 	return s
 
-def stateChanged(state):
-	try:
-		#check the server status and change state appropriately
-		r = requests.get('http://localhost:8002/state')
-		return not (state == r.text)
-	except Exception:
-		return False
+#def stateChanged(state):
+#	try:
+#		#check the server status and change state appropriately
+#		r = requests.get('http://localhost:8002/state')
+#		return not (state == r.text)
+#	except Exception:
+#		return False
 
 def ui_register_fp(count, text, subtext="", bgcolor=COLOR_GREEN800, fgcolor=pygame.Color(76,175,80)):
 	ui_fastclear(bgcolor)
@@ -441,10 +461,11 @@ def ui_register():
 			#Get first name
 			ui_fastclear(COLOR_GREEN800)
 			ui_title(white, COLOR_GREEN800, "Register", u"\uf014") #f014
-			ui_draw_textbox(COLOR_WHITE, "Enter your first name", "Press the ENTER key when you're done or ESC to reset")	
+			ui_draw_textbox(COLOR_WHITE, "Enter your first name", "Press the ENTER key when you're done or ESC to cancel")	
 			update()
 			firstName = getKeyboardString(True, "^[A-Za-z\\-]{0,24}$")
 			if firstName is None:
+				touch_reset()
 				return
 			else:
 				firstName = firstName.title()
@@ -517,9 +538,16 @@ def ui_register():
 					if ("timeout!" in r.text):
 						f = requests.post('http://localhost:8002/led/off', data = { })
 						print "Led OFF: " + f.text
+						touch_reset()
 						return
 
+			#Success!
+			ui_register_fp(3, "All done!", "")
+			update()
+			time.sleep(3)
+	
 			print "Done!"
+			touch_reset()
 			return
 
 def get_ip_address():
@@ -537,8 +565,8 @@ def ui_login_updatetime(bgcolor):
 	str_timeap[1].bottom = str_time[1].bottom
 	str_timeap[1].left = str_time[1].right + 6
 
-	blit_clear = pygame.Rect(0, str_time[1].top + 8,
-     str_time[1].width + str_timeap[1].width + 30, 320 - str_time[1].top - 8)
+	blit_clear = pygame.Rect(0, str_time[1].top - 8,
+     str_time[1].width + str_timeap[1].width + 30, str_time[1].height + 16)
 	
 	#Blit
 	lcd.fill(bgcolor, blit_clear)
@@ -577,7 +605,10 @@ def ui_login():
 			ui_register_fp(0, '', "", COLOR_BLUE900, pygame.Color(24,90,188).correct_gamma(GAMMA))
 			
 			#Draw text
-			ui_login_updatetext(COLOR_BLUE900, "Place finger on pad or touch screen to register")			
+			txt = "Place finger on pad"
+			if (keyboardAttached()):
+				txt += " or touch screen to register"
+			ui_login_updatetext(COLOR_BLUE900, txt)			
 			
 			#Draw time
 			ui_login_updatetime(COLOR_BLUE900)
@@ -592,6 +623,8 @@ def ui_login():
 
 			#Activate fingerprint and touchscreen
 			bgcolor = COLOR_BLUE900
+			start = timer()
+			bigstart = timer()
 			while True:
 				p = False #fp pressed
 				t = False #touchscreen touched
@@ -599,19 +632,30 @@ def ui_login():
 					if (touch.hasUpdate() is True):
 						press = touch.getState()[2]
 						if (press is 1 or press is 3):	
-							t = True
+							t = keyboardAttached()
 				
 					try:
 						r = requests.get('http://localhost:8002/pressed')
-						print r.text
 						if (r.text == "True"):
 							p = True
 					except:
-						ui_login_updatetext(bgcolor, "Fingerprint sensor not ready", textsize=24)
+						ui_login_updatetext(bgcolor, "Fingerprint sensor not ready, try again", textsize=24)
 
 					#Draw things to screen	
 					ui_login_updatetime(bgcolor)
 					update()
+					
+					#Check timers
+					if (timer() - start > 10) or (timer() - bigstart > 30):
+						try:
+							r = requests.post('http://localhost:8002/led/off', data={ })
+							print "LED OFF: " + r.text
+						except:
+							pass
+						#touch_reset()
+						return -2
+
+					usleep(10000) #100ms
 				
 				if t:
 					#Turn FPS LED off
@@ -628,20 +672,91 @@ def ui_login():
 					#Identify
 					r = requests.post('http://localhost:8002/login', data={ })
 					print r.text
+					start = timer()
 					if (r.text[:2] == "OK"):
 						id = int(r.text[3:])
 						print "Logged in as " + str(id)
 
 						#Go to success screen
-						return -2
+						phase = 10
+						break
 					else:
 						ui_login_updatetext(bgcolor, "Try again", COLOR_WHITE, 32)						
-				
-				usleep(10000) #100ms
 
-	#Return to start screen
-	return -2
+		if phase is 10:
+			#Success!
+			ui_clear(COLOR_GREEN800)
 
+			user = {}
+			user["firstName"] = "Arthur"
+			user["lastName"] = "Pachachura"
+			user["hoursToday"] = "2:40"
+			user["hoursTotal"] = "263"
+			user["lastEntry"] = "3:40 PM today"
+			user["isLeaving"] = False
+
+			white_lt = pygame.Color(255, 255, 255, 200)
+
+			#Draw welcome + name
+			str_name2 = FONT_LT.render(user["firstName"], fgcolor=COLOR_WHITE, size=32)
+			str_name2[1].top = 24
+			
+			str_name1 = FONT_LT.render(("Goodbye, " if user["isLeaving"] else "Welcome, "), fgcolor=white_lt, size=24)
+			str_name1[1].bottom = str_name2[1].bottom + 4
+			str_name1[1].left = 16
+			
+			str_name2[1].left = str_name1[1].right + 6
+
+			str_name3 = FONT_LT.render(user["lastName"], fgcolor=COLOR_WHITE, size=32)
+			str_name3[1].left = str_name2[1].right + 10
+			str_name3[1].bottom = str_name2[1].bottom
+
+			#Draw hours
+			str_h1 = FONT_LT.render(user["hoursToday"], fgcolor=COLOR_WHITE, size=36)
+			str_h1[1].top = str_name2[1].bottom + 36
+			str_h1[1].left = str_name1[1].left
+
+			str_h2 = FONT_LT.render("logged today", fgcolor=white_lt, size=24)
+			str_h2[1].bottom = str_h1[1].top + str_h1[1].height + 5
+			str_h2[1].left = str_h1[1].right + 12
+
+			str_h3 = FONT_LT.render("Last entered at " + user["lastEntry"], fgcolor=white_lt, size=16)
+			str_h3[1].top = str_h1[1].top + str_h1[1].height + 16
+			str_h3[1].left = str_name1[1].left
+		
+			str_h4 = FONT_LT.render(user["hoursTotal"], fgcolor=COLOR_WHITE, size=36)
+			str_h4[1].top = str_h3[1].top + str_h3[1].height + 28
+			str_h4[1].left = str_name1[1].left
+
+			str_h5 = FONT_LT.render("hours total", fgcolor=white_lt, size=24)
+			str_h5[1].left = str_h4[1].right + 12
+			str_h5[1].bottom = str_h4[1].bottom
+
+			#Blit and render
+			lcd.blit(str_h1[0], str_h1[1])
+			lcd.blit(str_h2[0], str_h2[1])
+			lcd.blit(str_h3[0], str_h3[1])
+			lcd.blit(str_h4[0], str_h4[1])
+			lcd.blit(str_h5[0], str_h5[1])
+			lcd.blit(str_name1[0], str_name1[1])
+			lcd.blit(str_name2[0], str_name2[1])
+			lcd.blit(str_name3[0], str_name3[1])
+			#ui_login_updatetime(COLOR_GREEN800)
+			update()
+
+			#Wait until touch of screen or certain timeout
+			start = timer()
+			while touch.hasUpdate() is False:
+				usleep(100000) #100ms
+				if (timer() - start > 10): 
+					touch_reset()
+					return 1
+				#ui_login_updatetime(COLOR_GREEN800)
+				update()
+
+			#Return to login screen
+			return 1
+	
 def updateState(state):
 	try:
 		#check the server status and change state appropriately
@@ -704,6 +819,13 @@ def exitThreads():
 	print "Exited."
 
 def done():
+	#Turn off fingerprint sensor
+	try:
+		f = requests.post('http://localhost:8002/led/off', data = { })
+		print "Led OFF: " + f.text
+	except:
+		pass
+
 	print "All done!"
 
 if __name__ == '__main__':

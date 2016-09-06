@@ -37,12 +37,12 @@ exports.identify = function() {
 		.then(function() { return fps.waitFinger(2000); })
 		.then(function() { return fps.captureFinger(); })
 		.then(function() { return fps.identify(); })
-		.then(function() { return fps.ledONOFF(0); })
 		.then(function(id) {
 			console.log("Logged in as " + id);
+			fps.ledONOFF(0).then(() => { resolve(id); });
 			resolve(id);
 		}, function(err) {
-			reject(err);
+			fps.ledONOFF(0).then(() => { reject(err); });
 		});
 	}));
 }
@@ -53,16 +53,6 @@ exports.ispressed = function() {
 		.then(() => { return fps.isPressFinger(); })
 		.then(() => { resolve(true); },
 		      (err) => { resolve(false); });
-	}));
-}
-
-recreateFps = function() {
-	return (new Promise(function(resolve, reject) {
-		console.log("Recreating FPS...")
-		fps = undefined
-		fps = new GT511C3('/dev/ttyAMA0', { baudrate: 115200, debug: true })
-		console.log("Recreated FPS!");
-		resolve()
 	}));
 }
 
@@ -286,7 +276,6 @@ exports.enroll3 = function() {
       });
     }));
 }
-
 
 exports.waitRelease = function() {
     return (new Promise(function(resolve, reject) {
