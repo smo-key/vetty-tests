@@ -10,13 +10,13 @@
 cd /home/pi/vetty/display/
 if [ -f "../temp" ]; then
   sudo rm ../temp
-  sleep 3
+  sleep 5
   ../modifier
   if [ "$?" -eq 0 ]; then
-      #python login.py
       PID=$(pidof python)
       (python login.py &)
-      sudo kill -SIGTERM $PID
+      sleep 3
+	  sudo kill -SIGTERM $PID
       sudo kill -SIGKILL $PID
       sudo kill -SIGQUIT $PID
       sudo kill -SIGINT $PID

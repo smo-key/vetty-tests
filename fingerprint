@@ -1,7 +1,7 @@
 #! /bin/sh
 ### BEGIN INIT INFO
-# Provides:          splash
-# Required-Start:    $ALL
+# Provides:          fingerprint
+# Required-Start:
 # Required-Stop:
 # Should-Start:
 # Default-Start:     3
@@ -12,11 +12,8 @@
 
 
 do_start () {
-    #sleep 5
-    cd /home/pi/vetty/display
-    (/usr/bin/python image.py &)
-    touch ../temp
-    cd -
+    cd /home/pi/vetty/server
+    (/usr/bin/node index.js &)
     exit 0
 }
 

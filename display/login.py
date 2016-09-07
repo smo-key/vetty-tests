@@ -139,12 +139,113 @@ def touch_reset():
 #Enable VSync
 enable_vsync()
 
+### KEYBOARD
+
 def keyboardAttached():
 	devices = [evdev.InputDevice(fn) for fn in evdev.list_devices()]
 	for device in devices:
 		if ("Keyboard" in device.name):
 			return True
 	return False
+
+import string
+import evdev
+from asyncore import file_dispatcher, loop
+from evdev import InputDevice, categorize, ecodes
+from select import select
+import Queue
+
+dev = InputDevice('/dev/input/event1')
+
+class InputDeviceDispatcher(file_dispatcher):    
+	queue = Queue.Queue()
+	
+	def __init__(self, device):
+		self.device = device
+		file_dispatcher.__init__(self, device)
+
+	def recv(self, ign=None):
+		return self.device.read()
+
+	def pop(self):
+		try:
+			return self.queue.get()
+		except:
+			return None
+
+	def handle_read(self):
+		for event in self.recv():
+			self.queue.put(event)
+			#print(repr(event))
+
+#inputQueue = InputDeviceDispatcher(dev)
+
+scancodes = {
+    # Scancode: ASCIICode
+    0: None, 1: u'ESC', 2: u'1', 3: u'2', 4: u'3', 5: u'4', 6: u'5', 7: u'6', 8: u'7', 9: u'8',
+    10: u'9', 11: u'0', 12: u'-', 13: u'=', 14: u'BKSP', 15: u'TAB', 16: u'q', 17: u'w', 18: u'e', 19: u'r',
+    20: u't', 21: u'y', 22: u'u', 23: u'i', 24: u'o', 25: u'p', 26: u'[', 27: u']', 28: u'CRLF', 29: u'LCTRL',
+    30: u'a', 31: u's', 32: u'd', 33: u'f', 34: u'g', 35: u'h', 36: u'j', 37: u'k', 38: u'l', 39: u';',
+    40: u'"', 41: u'`', 42: u'LSHFT', 43: u'\\', 44: u'z', 45: u'x', 46: u'c', 47: u'v', 48: u'b', 49: u'n',
+    50: u'm', 51: u',', 52: u'.', 53: u'/', 54: u'RSHFT', 56: u'LALT', 57: u' ', 100: u'RALT'
+}
+capscodes = {
+    0: None, 1: u'ESC', 2: u'!', 3: u'@', 4: u'#', 5: u'$', 6: u'%', 7: u'^', 8: u'&', 9: u'*',
+    10: u'(', 11: u')', 12: u'_', 13: u'+', 14: u'BKSP', 15: u'TAB', 16: u'Q', 17: u'W', 18: u'E', 19: u'R',
+    20: u'T', 21: u'Y', 22: u'U', 23: u'I', 24: u'O', 25: u'P', 26: u'{', 27: u'}', 28: u'CRLF', 29: u'LCTRL',
+    30: u'A', 31: u'S', 32: u'D', 33: u'F', 34: u'G', 35: u'H', 36: u'J', 37: u'K', 38: u'L', 39: u':',
+    40: u'\'', 41: u'~', 42: u'LSHFT', 43: u'|', 44: u'Z', 45: u'X', 46: u'C', 47: u'V', 48: u'B', 49: u'N',
+    50: u'M', 51: u'<', 52: u'>', 53: u'?', 54: u'RSHFT', 56: u'LALT', 57: u' ', 100: u'RALT'
+}
+
+keyboardQueue = Queue.Queue()
+
+def readKey():
+	#caps = False
+	#for key in dev.active_keys(verbose=True):
+	#	if (key[1] == 42) or (key[1] == 54):
+	#		caps = True
+	#		break
+	try:
+		return keyboardQueue.get()
+	except:
+		return None
+
+def startInputLoop():
+	while True:
+		caps = False
+		for key in dev.active_keys(verbose=True):
+			if (key[1] == 42) or (key[1] == 54):
+				caps = True
+				break
+
+		r,w,x = select([dev], [], [])
+		for event in dev.read():
+			#print event
+			if event.type==1 and (event.value==1 or event.value==0):
+				down = event.value == 1
+
+				if (event.code == 42) or (event.code == 54):
+					caps = down
+
+				try:
+					if down:
+						print str(event.code) + " (" + (scancodes[event.code] if not caps else capscodes[event.code]) + ")"
+					if down:
+						keyboardQueue.put((scancodes[event.code] if not caps else capscodes[event.code], event.code))
+					else:
+						continue
+				except:
+					print event.code
+					continue
+		time.sleep(0.005)
+
+k_t = threading.Thread(target=startInputLoop, args = ())
+k_t.daemon = True
+k_t.start()
+
+
+### UI
 
 def ui_clear(color=COLOR_BLUE900, pos=(240,160)):
 	r = (10, 20, 40, 70, 110, 160, 240, 320)
@@ -353,22 +454,27 @@ def ui_draw_textbox(color, toptext, helptext):
 def getKeyboardString(allowcancel, regex, skipchar=-1, skipresult=""):
 	s = ""
 	test = re.compile(regex)
+	key = None
 	pygame.event.clear()
 	while True:
-		while not pygame.event.peek(2):
-			time.sleep(0.01)
-		event = pygame.event.get(2)[0]
-		pygame.event.clear()
+		key = None
+		while key is None:
+			key = readKey()
+			time.sleep(0.01)		
+		char = key[0]
+		code = key[1]
+		#event = pygame.event.get(2)[0]
+		#pygame.event.clear()
 		#print event.__dict__
-		code = event.__dict__['key']
-		char = event.__dict__['unicode']
-		if (code is 13) and (len(s) > 0):
+		#code = event.__dict__['key']
+		#char = event.__dict__['unicode']
+		if (code is 28) and (len(s) > 0):
 			#enter key
 			return s
-		elif (code is 27) and allowcancel:
+		elif (code is 1) and allowcancel:
 			#escape
 			return None
-		elif (code is 8) and (len(s) > 0):
+		elif (code is 14) and (len(s) > 0):
 			#backspace
 			s = s[:-1]
 		#rest is actual characters
@@ -376,19 +482,14 @@ def getKeyboardString(allowcancel, regex, skipchar=-1, skipresult=""):
 			#skip
 			print "Skipping!"
 			return skipresult
+		elif (len(char) > 1):
+			#Must be a control character - skip
+			continue
 		elif (test.match(char) is None) or (test.match(s + char) is None):
 			#don't allow this character because it would fail to pass the regex
 			continue
-		elif code >= 97 and code <= 122:
-			s += char
-		elif code is 32:
-			s += char
-		elif code is 45:
-			s += char
-		elif code >= 48 and code <= 57:
-			s += char
 		else:
-			continue
+			s += char
 
 		#print s + " (" + char + ")"
 		#Draw the string!
@@ -492,7 +593,7 @@ def ui_register():
 				helptext = "Invalid student or teacher ID."
 			ui_draw_textbox(COLOR_WHITE, "Enter your student or teacher ID", helptext)
 			update()
-			stuId = getKeyboardString(True, "^[0-9]{0,9}$", 32, "")
+			stuId = getKeyboardString(True, "^[0-9]{0,9}$", 57, "")
 			if stuId is None:
 				phase = 2
 			elif len(stuId) < 7 and len(stuId) > 0:
