@@ -1,0 +1,136 @@
+<link rel="import" href="../lib/polymer/polymer.html">
+<link rel="import" href="../lib/iron-pages/iron-pages.html">
+<link rel="import" href="../lib/iron-icon/iron-icon.html">
+<link rel="import" href="../lib/paper-card/paper-card.html">
+<link rel="import" href="../lib/paper-input/paper-input.html">
+<link rel="import" href="../lib/paper-styles/color.html">
+<link rel="import" href="../lib/paper-button/paper-button.html">
+<link rel="import" href="./mdi.html">
+
+<dom-module id="vetty-app">
+  <template>
+    <style>
+      :host {
+        display: block;
+        font-family: 'Roboto', 'Noto', "Helvetica Neue", Helvetica, arial, sans-serif;
+
+        --flex-center: {
+          display: -webkit-box;
+          display: -moz-box;
+          display: -ms-flexbox;
+          display: -webkit-flex;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+      }
+
+      .main-container {
+        @apply(--flex-center);
+        flex-direction: column;
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        right: 0;
+      }
+
+      paper-card.login, paper-button#login
+      {
+        width: 360px;
+      }
+
+      paper-card.login {
+        color: var(--paper-grey-800);
+      }
+      paper-card.login .header .title-text
+      {
+        padding-bottom: 0px;
+      }
+      paper-card.login .card-content
+      {
+        padding-top: 0;
+        padding: 0;
+      }
+      paper-card.login .login-error
+      {
+        background-color: var(--paper-red-500);
+        color: white;
+        padding: 12px 16px;
+      }
+      paper-card.login paper-input {
+        padding: 0 16px;
+      }
+
+      .copyright {
+        position: absolute;
+        bottom: 16px;
+        left: 0;
+        right: 0;
+        text-align: center;
+        color: var(--paper-blue-100);
+        font-size: 10px;
+      }
+
+      paper-button {
+        border-radius: 0;
+      }
+      paper-button iron-icon {
+        padding-right: 6px;
+      }
+      paper-button#login {
+        background-color: var(--paper-blue-700);
+        margin: 0;
+        margin-top: 12px;
+        color: white;
+      }
+
+    </style>
+
+    <iron-pages selected="[[page]]" attr-for-selected="name">
+      <!-- LOGIN -->
+      <div name="login">
+        <div class="main-container">
+          <paper-card class="login" heading="Vetty Login" elevation="3">
+            <div class="card-content">
+              <div class="login-error" hidden$="[[!loginError]]">
+                Username and password incorrect.
+              </div>
+              <paper-input label="Username" required></paper-input>
+              <paper-input label="Password" type="password" required></paper-input>
+              <paper-button id="login">
+                <iron-icon icon="mdi:lock"></iron-icon>
+                Login
+              </paper-button>
+            </div>
+          </paper-card>
+        </div>
+        <div class="copyright">
+          Copyright (C) 2016 Arthur Pachachura
+        </div>
+      </div>
+
+      <!-- MAIN -->
+      <div name="main">
+
+      </div>
+
+    </iron-pages>
+
+  </template>
+  <script>
+    Polymer({
+      is: 'vetty-app',
+      properties: {
+        page: {
+          type: String,
+          value: 'main'
+        },
+        loginError: {
+          type: Boolean,
+          value: false
+        }
+      },
+    });
+  </script>
+</dom-module>

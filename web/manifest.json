@@ -1,0 +1,7 @@
+{
+  "name": "vetty",
+  "short_name": "vetty",
+  "description": "Vetty Door Lock",
+  "start_url": "/",
+  "display": "standalone"
+}

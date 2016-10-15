@@ -1,6 +1,5 @@
 # Custom
 node_modules/
-db/
 *.txt
 
 # Byte-compiled / optimized / DLL files

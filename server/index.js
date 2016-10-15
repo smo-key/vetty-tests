@@ -39,7 +39,7 @@ publicApi.post('/api/users/register', function(req, res) {
 	//var lastName = req.body.lastName;
 	//var userId = req.body.userId;
 	var adminToken = req.body.token;
-	
+
 	//TODO send display commands to Python server (8003) when starting and updating
 	//Do not exit register mode until command is given
 	//Users enter their info via keyboard
@@ -71,7 +71,7 @@ publicApi.post('/api/users/list', function(req, res) {
 
 privateApi.post('/login', function(req, res) {
 	var fpId = req.body.fpId;
-	
+
 	_fp.fp.identify().then((id) => {
 		res.send("OK " + id);
 	}, (err) => {
@@ -133,7 +133,7 @@ privateApi.post('/register/2', function(req, res) {
 
 addUser = function(data)
 {
-	
+
 }
 
 privateApi.post('/register/3', function(req, res) {
