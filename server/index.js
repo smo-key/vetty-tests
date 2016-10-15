@@ -92,16 +92,26 @@ privateApi.post('/led/off', function(req, res) {
 	});
 });
 privateApi.post('/register/1', function(req, res) {
-	//TODO get next fpId
-	var fpId = 0;
+	//Get next available fpId
+	User.find({}).sort({id: 1}).exec(function(err, users) {
+		var fpId = 0;
+		console.log(users);
+		for (var i=0; i<users.length; i++) {
+			if (users[i].id == fpId) {
+				fpId++;
+			} else { break; }
+		};
 
-	_fp.fp.enroll1(fpId).then(() => {
-		console.log("Register phase 1 complete")
-		res.send("OK " + fpId)
-	}, (err) => {
-		res.send(_fp.fp.getError(err));
+		console.log(fpId);
+		_fp.fp.enroll1(fpId).then(() => {
+     		console.log("Register phase 1 complete")
+        	res.send("OK " + (fpId))
+    	}, (err) => {
+    	    res.send(_fp.fp.getError(err));
+	    });
 	});
 });
+
 privateApi.post('/register/2', function(req, res) {
 	_fp.fp.enroll2().then(() => {
         console.log("Register phase 2 complete")

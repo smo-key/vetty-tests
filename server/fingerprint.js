@@ -78,10 +78,10 @@ exports.ledoff = function(id) {
 exports.deleteID = function(id) {
 	return (new Promise(function(resolve, reject){		
 		fps.deleteID(id).then(function() {
-			console.log("ID Deleted!");
+			console.log("ID " + id + " Deleted!");
 			resolve();
 		}, function(err) {
-			console.warn("No ID to delete!");
+			console.warn("No ID to delete at index " + id);
 			resolve();
 		});
 	}));
@@ -161,13 +161,10 @@ exports.enroll = function(ID) {
     }));
 }
 
-exports.enroll1 = function(ID) {
+exports.enroll1 = function(id) {
     return (new Promise(function(resolve, reject) {
       var errorHandler = function(err) {
         reject(err);
-      }
-      var start = function() {
-        return fps.enrollStart(ID)
       }
       var capture = function() {
         return fps.captureFinger(fps.BEST_IMAGE);
@@ -182,12 +179,13 @@ exports.enroll1 = function(ID) {
         return fps.ledONOFF(0);
       }
 
-      exports.deleteID(ID)
+      exports.deleteID(id)
         .then(ledON)
 		.then(waitFinger)
-        .then(start)
+        .then(() => { return fps.enrollStart(id); })
         .then(capture)
         .then(function() {
+		  console.log("Enrolling ID " + id);
           return fps.enroll1();
         })
         .then(ledOFF)
@@ -205,9 +203,6 @@ exports.enroll2 = function() {
     return (new Promise(function(resolve, reject) {
       var errorHandler = function(err) {
         reject(err);
-      }
-      var start = function() {
-        return fps.enrollStart(ID)
       }
       var capture = function() {
         return fps.captureFinger(fps.BEST_IMAGE);
@@ -243,9 +238,6 @@ exports.enroll3 = function() {
     return (new Promise(function(resolve, reject) {
       var errorHandler = function(err) {
         reject(err);
-      }
-      var start = function() {
-        return fps.enrollStart(ID)
       }
       var capture = function() {
         return fps.captureFinger(fps.BEST_IMAGE);
