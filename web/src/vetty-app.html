@@ -3,8 +3,14 @@
 <link rel="import" href="../lib/iron-icon/iron-icon.html">
 <link rel="import" href="../lib/paper-card/paper-card.html">
 <link rel="import" href="../lib/paper-input/paper-input.html">
+<link rel="import" href="../lib/paper-listbox/paper-listbox.html">
+<link rel="import" href="../lib/paper-item/paper-item.html">
 <link rel="import" href="../lib/paper-styles/color.html">
 <link rel="import" href="../lib/paper-button/paper-button.html">
+<link rel="import" href="../lib/paper-header-panel/paper-header-panel.html">
+<link rel="import" href="../lib/paper-icon-button/paper-icon-button.html">
+<link rel="import" href="../lib/paper-tabs/paper-tabs.html">
+<link rel="import" href="../lib/paper-toolbar/paper-toolbar.html">
 <link rel="import" href="./mdi.html">
 
 <dom-module id="vetty-app">
@@ -13,6 +19,8 @@
       :host {
         display: block;
         font-family: 'Roboto', 'Noto', "Helvetica Neue", Helvetica, arial, sans-serif;
+
+        --paper-tab-ink: var(--paper-blue-200);
 
         --flex-center: {
           display: -webkit-box;
@@ -33,6 +41,9 @@
         bottom: 0;
         left: 0;
         right: 0;
+      }
+      .login .main-container {
+        background-color: #2196F3;
       }
 
       paper-card.login, paper-button#login
@@ -70,6 +81,7 @@
         text-align: center;
         color: var(--paper-blue-100);
         font-size: 10px;
+        z-index: -1;
       }
 
       paper-button {
@@ -83,6 +95,76 @@
         margin: 0;
         margin-top: 12px;
         color: white;
+      }
+
+      paper-toolbar {
+        --paper-toolbar-background: var(--paper-blue-500);
+      }
+      paper-toolbar .title
+      {
+        margin-left: 0;
+        height: 40px;
+        position: relative;
+        top: 10px;
+      }
+      paper-toolbar paper-tabs {
+        --paper-tabs-selection-bar-color: transparent;
+        height: 48px;
+        position: absolute;
+        bottom: 0;
+      }
+      paper-toolbar paper-tabs paper-tab.iron-selected {
+        background-color: var(--paper-blue-700);
+        color: white;
+      }
+      paper-tab paper-ripple {
+        color: white!important;
+      }
+
+      .main-subpage {
+        color: var(--paper-grey-900);
+      }
+      .main-subpage paper-card {
+        width: 100%;
+      }
+
+      paper-card.table-row
+      {
+        height: 48px;
+        width: 100%;
+        overflow: hidden;
+        transition: background-color 0.4s;
+        padding: 0;
+        margin: 0;
+        @apply(--flex-center);
+        justify-content: space-around;
+        border-radius: 0;
+        background-color: var(--paper-blue-700);
+        color: #fff;
+      }
+      div.table-row-container
+      {
+        @apply(--flex-center);
+        justify-content: space-around;
+        height: 48px;
+      }
+      @media (max-width: 769px)
+      {
+        div.table-row-container {
+            width: 100%;
+        }
+      }
+      div.col
+      {
+        height: 100%;
+        @apply(--flex-center);
+        justify-content: flex-start;
+        padding-left: 6px!important;
+        padding-right: 6px!important;
+      }
+      div.col.center
+      {
+        justify-content: center;
       }
 
     </style>
@@ -112,7 +194,111 @@
 
       <!-- MAIN -->
       <div name="main">
+        <paper-header-panel mode="waterfall-tall" tall-class="medium-tall">
+          <paper-toolbar>
+            <span class="title">Vetty Admin Panel</span>
+            <div class="spacer"></div>
+            <span style="margin-right:8px;">Logged in as <span style="font-weight: 900;">LASA Robotics</span></span>
+            <paper-icon-button style="position:relative;top:1px" icon="mdi:logout-variant"></paper-icon-button>
+            <paper-tabs class="bottom" selected="{{subpage}}" attr-for-selected="name">
+              <paper-tab name="users">Users</paper-tab>
+              <paper-tab name="admins">Admins</paper-tab>
+            </paper-tabs>
+          </paper-toolbar>
+        </paper-header-panel>
 
+        <iron-pages selected="[[subpage]]" attr-for-selected="name">
+          <!-- USERS -->
+          <div class="main-subpage" name="users">
+            <paper-card class="table-row row noselect">
+              <div class="container table-row-container">
+                <div class="col col-xs-12" style="padding: 0; max-width:60px" on-tap="sortUsersByID">
+                  ID
+                  <iron-icon icon="mdi:menu-down" hidden$={{!isSortUsersID(sortUsers)}}></iron-icon>
+                  <paper-ripple></paper-ripple>
+                </div>
+                <div class="col col-xs-12" style="padding: 0;" on-tap="sortUsersByLast">
+                  Last Name
+                  <iron-icon icon="mdi:menu-down" hidden$={{!isSortUsersLast(sortUsers)}}></iron-icon>
+                  <paper-ripple></paper-ripple>
+                </div>
+                <div class="col col-xs-12" style="padding: 0;" on-tap="sortUsersByFirst">
+                  First Name
+                  <iron-icon icon="mdi:menu-down" hidden$={{!isSortUsersFirst(sortUsers)}}></iron-icon>
+                  <paper-ripple></paper-ripple>
+                </div>
+                <div class="col col-xs-12" style="padding: 0;max-width:100px" on-tap="sortUsersByHours">
+                  Hours
+                  <iron-icon icon="mdi:menu-down" hidden$={{!isSortUsersHours(sortUsers)}}></iron-icon>
+                  <paper-ripple></paper-ripple>
+                </div>
+                <div class="col col-xs-1" style="min-width:52px;padding:0">
+                  Delete
+                  <!-- <paper-icon-button icon="mdi:dots-vertical"></paper-icon-button> -->
+                </div>
+              </div>
+            </paper-card>
+
+            <template is="dom-repeat" items="{{users}}" sort="{{sortUsers}}">
+              <paper-card class="table-row row noselect" style="background-color: white; color: #000">
+                <div class="container table-row-container">
+                  <div class="col col-xs-12" style="padding: 0; max-width:60px">
+                    {{item.id}}
+                  </div>
+                  <div class="col col-xs-12" style="padding: 0;">
+                    {{item.lastName}}
+                  </div>
+                  <div class="col col-xs-12" style="padding: 0;">
+                    {{item.firstName}}
+                  </div>
+                  <div class="col col-xs-12" style="padding: 0;max-width:100px">
+                    {{item.totalHours}}
+                  </div>
+                  <div class="col col-xs-1" style="min-width:52px;padding:0">
+                    <paper-icon-button icon="mdi:delete" style="color:#D32F2F"></paper-icon-button>
+                  </div>
+                </div>
+              </paper-card>
+            </template>
+          </div>
+
+          <!-- ADMINS -->
+          <div class="main-subpage" name="admins">
+            <paper-card class="table-row row noselect">
+              <div class="container table-row-container">
+                <div class="col col-xs-12" style="padding: 0;" on-tap="sortUsersByLast">
+                  Name
+                </div>
+                <div class="col col-xs-12" style="padding: 0;" on-tap="sortUsersByFirst">
+                  Email
+                </div>
+                <div class="col col-xs-1" style="min-width:52px;padding:0">
+                  <!-- <paper-icon-button icon="mdi:dots-vertical"></paper-icon-button> -->
+                </div>
+              </div>
+            </paper-card>
+
+            <template is="dom-repeat" items="{{admins}}">
+              <paper-card class="table-row row noselect" style="background-color: white; color: #000">
+                <div class="container table-row-container">
+                  <div class="col col-xs-12" style="padding: 0;" on-tap="sortUsersByLast">
+                    {{item.name}}
+                  </div>
+                  <div class="col col-xs-12" style="padding: 0;" on-tap="sortUsersByFirst">
+                    {{item.email}}
+                  </div>
+                  <div class="col col-xs-1" style="min-width:52px;padding:0">
+                    <!-- <paper-icon-button icon="mdi:dots-vertical"></paper-icon-button> -->
+                  </div>
+                </div>
+              </paper-card>
+            </template>
+          </div>
+        </iron-pages>
+
+        <div class="copyright" style="color: #666666">
+          Copyright (C) 2016 Arthur Pachachura
+        </div>
       </div>
 
     </iron-pages>
@@ -126,11 +312,67 @@
           type: String,
           value: 'main'
         },
+        subpage: {
+          type: String,
+          value: 'users'
+        },
         loginError: {
           type: Boolean,
           value: false
+        },
+        sortUsers: {
+          type: String,
+          value: 'sortUsersID'
+        },
+        users: {
+          type: Array,
+          value: [ { id: 1, firstName: "Arthur", lastName: "Pachachura", totalHours: 12.3}, { id: 2, firstName: "Anrthur", lastName: "Blachachura", totalHours: 10.3}, { id: 3, firstName: "Anrthur", lastName: "Blachachura", totalHours: 20} ]
+        },
+        admins: {
+          type: Array,
+          value: [ { name: "LASA Robotics", email: "lasa418@gmail.com" }]
         }
       },
+      sortUsersID: function(a, b) {
+          return a.id - b.id;
+      },
+      sortUsersLast: function(a, b) {
+          return a.lastName.localeCompare(b.lastName);
+      },
+      sortUsersFirst: function(a, b) {
+          return a.firstName.localeCompare(b.firstName);
+      },
+      sortUsersHours: function(a, b) {
+          return b.totalHours - a.totalHours;
+      },
+      isSortUsersID: function(sortUsers) {
+        return sortUsers == 'sortUsersID';
+      },
+      isSortUsersLast: function(sortUsers) {
+        return sortUsers == 'sortUsersLast';
+      },
+      isSortUsersFirst: function(sortUsers) {
+        return sortUsers == 'sortUsersFirst'
+      },
+      isSortUsersHours: function(sortUsers) {
+        return sortUsers == 'sortUsersHours';
+      },
+      sortUsersByID: function() {
+        this.set('sortUsers','sortUsersID');
+      },
+      sortUsersByLast: function() {
+        this.set('sortUsers','sortUsersLast');
+      },
+      sortUsersByFirst: function() {
+        this.set('sortUsers','sortUsersFirst');
+      },
+      sortUsersByHours: function() {
+        this.set('sortUsers','sortUsersHours');
+      },
+      ready: function() {
+        //get users and admins
+
+      }
     });
   </script>
 </dom-module>
