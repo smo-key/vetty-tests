@@ -55,8 +55,16 @@ publicApi.post('/api/users/delete', function(req, res) {
 	//TODO make sure to delete from fingerprint sensor
 });
 
-publicApi.post('/api/users/list', function(req, res) {
-	var adminToken = req.body.token;
+publicApi.get('/api/users/list', function(req, res) {
+	res.header('Access-Control-Allow-Origin', 'http://10.42.0.231:5000');
+	User.find({}).sort({ id: 1 }).exec((err, users) => {
+		for (var i=0; i<users.length; i++)
+		{
+			users[i].totalHours = users[i].totalHours.toFixedDown(1);
+		}
+		console.log(users);
+		res.send(users);
+	});
 });
 
 publicApi.post('/api/settings/deleteall', function(req, res) {
