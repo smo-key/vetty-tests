@@ -618,7 +618,7 @@ def ui_register():
 					ui_register_fp(count, "Lift finger and try again", "Hold your finger firmly on the pad")
 					update()
 					time.sleep(2)
-				elif ((r is not None) and r.text == "OK"):
+				elif ((r is not None) and r.text[:2] == "OK"):
 					if count is 1:
 						ui_register_fp(count, "Rotate finger slightly left and place", "Hold finger firmly on the pad")
 					elif count is 2:
