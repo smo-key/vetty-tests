@@ -227,6 +227,11 @@
                   <iron-icon icon="mdi:menu-down" hidden$={{!isSortUsersFirst(sortUsers)}}></iron-icon>
                   <paper-ripple></paper-ripple>
                 </div>
+                <div class="col col-xs-12" style="padding: 0;max-width:120px" on-tap="sortUsersByStuID">
+                  School ID
+                  <iron-icon icon="mdi:menu-down" hidden$={{!isSortUsersStuID(sortUsers)}}></iron-icon>
+                  <paper-ripple></paper-ripple>
+                </div>
                 <div class="col col-xs-12" style="padding: 0;max-width:100px" on-tap="sortUsersByHours">
                   Hours
                   <iron-icon icon="mdi:menu-down" hidden$={{!isSortUsersHours(sortUsers)}}></iron-icon>
@@ -250,6 +255,9 @@
                   </div>
                   <div class="col col-xs-12" style="padding: 0;">
                     {{item.firstName}}
+                  </div>
+                  <div class="col col-xs-12" style="padding: 0;max-width:120px">
+                    {{item.studentId}}
                   </div>
                   <div class="col col-xs-12" style="padding: 0;max-width:100px">
                     {{item.totalHours}}
@@ -324,10 +332,11 @@
           type: String,
           value: 'sortUsersID'
         },
-        /*users: {
+        users: {
           type: Array,
-          //value: [ { id: 1, firstName: "Arthur", lastName: "Pachachura", totalHours: 12.3, studentId: "1234567"}  ]
-        },*/
+          value: [ { id: 1, firstName: "Arthur", lastName: "Pachachura", totalHours: 12.3, studentId: "1234567"},
+          { id: 2, firstName: "Bacon", lastName: "Apples", totalHours: 4.1, studentId: "2110698"}   ]
+        },
         admins: {
           type: Array,
           value: [ { name: "LASA Robotics", email: "lasa418@gmail.com" }]
@@ -342,8 +351,11 @@
       sortUsersFirst: function(a, b) {
           return a.firstName.localeCompare(b.firstName);
       },
-      sortUsersHours: function(a, b) {
+      sortUsersStuID: function(a, b) {
           return b.totalHours - a.totalHours;
+      },
+      sortUsersHours: function(a, b) {
+          return a.studentId - b.studentId;
       },
       isSortUsersID: function(sortUsers) {
         return sortUsers == 'sortUsersID';
@@ -353,6 +365,9 @@
       },
       isSortUsersFirst: function(sortUsers) {
         return sortUsers == 'sortUsersFirst'
+      },
+      isSortUsersStuID: function(sortUsers) {
+        return sortUsers == 'sortUsersStuID';
       },
       isSortUsersHours: function(sortUsers) {
         return sortUsers == 'sortUsersHours';
@@ -366,13 +381,16 @@
       sortUsersByFirst: function() {
         this.set('sortUsers','sortUsersFirst');
       },
+      sortUsersByStuID: function() {
+        this.set('sortUsers','sortUsersStuID');
+      },
       sortUsersByHours: function() {
         this.set('sortUsers','sortUsersHours');
       },
       ready: function() {
         //get users and admins
 		const self = this;
-		console.log("Get users");	
+		console.log("Get users");
 		jQuery.getJSON("http://10.42.0.231:8001/api/users/list", function(data) {
             self.set("users", data);
 			console.log(data);
