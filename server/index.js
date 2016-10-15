@@ -3,14 +3,14 @@ var publicApi = express();
 var privateApi = express();
 var bodyParser = require('body-parser');
 var request = require('request');
+var assert = require('assert');
+var colors = require('colors');
 
 var _fp = { }
 _fp.fp = require('./fingerprint.js');
 
 const publicPort = 8001;
 const privatePort = 8002;
-
-var state = "Normal";//"Normal or Register";
 
 //Process JSON
 publicApi.use(bodyParser.json());
@@ -20,40 +20,23 @@ privateApi.use(bodyParser.json());
 _fp.fp.init();
 
 /** DATABASE **/
-var MongoClient = require('mongodb').MongoClient;
-var assert = require('assert');
+var mongoose = require('mongoose');
+mongoose.Promise = require('q').Promise;
+mongoose.connect("mongodb://localhost:27017/vetty", { config: { autoIndex: false } });
 
-// Connection URL
-var url = 'mongodb://localhost:27017/vetty';
+//Load schema
+var Schema = mongoose.Schema;
+    User = require('./db/user.js')(Schema, mongoose);
 
-// Use connect method to connect to the server
-/*MongoClient.connect(url, function(err, db) {
-  assert.equal(null, err);
-  console.log("Connected successfully to server");
-});*/
+//Connect to database
+var db = mongoose.connection;
+db.on('error', console.error.bind(console, 'Connection error: '));
+
+db.once('open', () => {
+	console.log("Connected to database on port 27017");
+});
 
 /** PUBLIC (END-USER) API **/
-
-publicApi.post('/api/users/register', function(req, res) {
-	//var firstName = req.body.firstName;
-	//var lastName = req.body.lastName;
-	//var userId = req.body.userId;
-	var adminToken = req.body.token;
-
-	//TODO send display commands to Python server (8003) when starting and updating
-	//Do not exit register mode until command is given
-	//Users enter their info via keyboard
-	state = "Register"
-	res.status(200).json({ });
-});
-
-publicApi.post('/api/users/registerEnd', function(req, res) {
-	var adminToken = req.body.token;
-
-	//TODO End registration mode
-	state = "Normal";
-	res.status(200).json({ });
-});
 
 publicApi.post('/api/users/delete', function(req, res) {
 	var userId = req.body.userId;
@@ -93,12 +76,6 @@ privateApi.get('/state', function(req, res) {
 	res.send(state);
 });
 
-/*
-privateApi.post('/state', function(req, res) {
-	//TODO set state here
-});
-*/
-
 privateApi.post('/wait/release', function(req, res) {
 	//Wait for finger to release
 	_fp.fp.waitRelease().then(() => {
@@ -131,19 +108,38 @@ privateApi.post('/register/2', function(req, res) {
     });
 });
 
-addUser = function(data)
-{
-
-}
-
 privateApi.post('/register/3', function(req, res) {
 	console.log(req.body)
 	_fp.fp.enroll3().then(() => {
-        console.log("Register phase 3 complete")
-        res.send("OK")
-    }, (err) => {
-        res.send(_fp.fp.getError(err));
-    });
+    console.log("Register phase 3 complete")
+
+		//Add row to database
+		var user = {
+			firstName: req.body.firstName,
+			lastName: req.body.lastName,
+			id: req.body.fpId,
+			studentId: req.body.studentId,
+			registerDate: Date.now(),
+			logins: [ ],
+			totalHours: 0
+		};
+
+		var predicate = { id: req.body.fpId };
+		
+		//update prevents duplicates and allows overwrite
+		Attendance.findOneAndUpdate(predicate, user, { new: true, upsert: true, runValidators: true }, (err, newRecord) => {
+			console.log("Enroll new user".yellow);
+			console.log(newRecord);
+			if (err) {
+				Object.keys(err.errors).forEach(function(error, key, _array) {
+					console.error("Validation error: " + err.errors[error].message + " on field '" + error + "'");
+				});
+			}
+			res.send("OK");
+		});
+  }, (err) => {
+      res.send(_fp.fp.getError(err));
+  });
 });
 
 
