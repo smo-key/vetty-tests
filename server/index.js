@@ -68,14 +68,18 @@ privateApi.post('/login', function(req, res) {
 			user.studentId = dbuser.studentId;
 
 			//Get last entry and exit today -> lastLogin
-      var now = Date.now();
-      var truncDate = new Date(now.year, now.month, now.day);
+      		var now = new Date();
+      		var truncDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+			console.log(now);
+			console.log(truncDate);
 			Login.find({ id: id, registerDate: dbuser.registerDate, date: truncDate })
-      .sort({dateTime: -1}).limit(2).exec((err, entries) {
-        if (err) { throw err; }
+			.sort({dateTime: -1})
+			.limit(2)
+			.exec((err, entries) => {
+        		if (err) { throw err; }
 				//entries will either contain [ exit, entry ], [ entry, entry ], [entry], or [ ]
 
-        console.log(entries);
+       			 console.log(entries);
 
         var login;
         var totalHours;
@@ -117,20 +121,22 @@ privateApi.post('/login', function(req, res) {
 
         //Get last entry
         Login.find({ id: id, registerDate: dbuser.registerDate, isEntry: true })
-        .sort({dateTime: -1}).limit(1).exec((err, entries) {
+        .sort({dateTime: -1}).limit(1).exec((err, entries) => {
           if (err) { throw err; }
 
           var lastEntry = entries[0];
           console.log(lastEntry);
 
+		  //TODO prevent undefined here!		
+
           //TODO convert lastEntry to pretty time
           user.lastEntry = lastEntry.dateTime;
 
           //Push new login record to login table
-          login.save((err, newLogin) {
+          login.save((err, newLogin) => {
             if (err) { throw err; }
             //Sum hours of all logins that occured today, including the new one -> hoursToday
-      			Login.find({id: id, registerDate: dbuser.registerDate, date: truncDate, isEntry: false), (err, logins) {
+      			Login.find({id: id, registerDate: dbuser.registerDate, date: truncDate, isEntry: false}, (err, logins) => {
               //All exits today
               var hours = 0;
               for (var i=0; i<logins.length; i++) {
