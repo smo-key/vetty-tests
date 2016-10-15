@@ -18,6 +18,7 @@ mongoose.connect("mongodb://localhost:27017/vetty", { config: { autoIndex: false
 //Load schema
 var Schema = mongoose.Schema;
     User = require('./db/user.js')(Schema, mongoose);
+	Login = require('./db/login.js')(Schema, mongoose);
 
 //Connect to database
 var db = mongoose.connection;
@@ -26,6 +27,9 @@ db.on('error', console.error.bind(console, 'Connection error: '));
 db.once('open', () => {
     console.log("Connected to database on port 27017");
 	User.remove({}, function(err, data) {
+		console.log(data);
+	});
+	Login.remove({}, function(err, data) {
 		console.log(data);
 	});
 });

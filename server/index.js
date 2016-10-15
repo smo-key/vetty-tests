@@ -5,6 +5,7 @@ var bodyParser = require('body-parser');
 var request = require('request');
 var assert = require('assert');
 var colors = require('colors');
+var moment = require('moment');
 
 var _fp = { }
 _fp.fp = require('./fingerprint.js');
@@ -15,6 +16,13 @@ const privatePort = 8002;
 //Process JSON
 publicApi.use(bodyParser.json());
 privateApi.use(bodyParser.json());
+
+/** UTIL **/
+Number.prototype.toFixedDown = function(digits) {
+    var re = new RegExp("(\\d+\\.\\d{" + digits + "})(\\d)"),
+        m = this.toString().match(re);
+    return m ? parseFloat(m[1]) : this.valueOf();
+};
 
 /** FINGERPRINT **/
 _fp.fp.init();
@@ -51,6 +59,19 @@ publicApi.post('/api/users/list', function(req, res) {
 	var adminToken = req.body.token;
 });
 
+publicApi.post('/api/settings/deleteall', function(req, res) {
+	_fp.fp.deleteAll().then(() => {
+		console.log("All fingerprints deleted!");
+		res.send({ ok: true });
+	});
+	User.remove({}, function(err, data) {
+        console.log(data);
+    });
+    Login.remove({}, function(err, data) {
+        console.log(data);
+    });
+});
+
 /** PRIVATE (PYTHON) API - called from Python server **/
 
 privateApi.post('/login', function(req, res) {
@@ -79,6 +100,7 @@ privateApi.post('/login', function(req, res) {
         		if (err) { throw err; }
 				//entries will either contain [ exit, entry ], [ entry, entry ], [entry], or [ ]
 
+				 console.log("Get last entry and exit today".yellow);
        			 console.log(entries);
 
         var login;
@@ -89,17 +111,19 @@ privateApi.post('/login', function(req, res) {
     			//If latest item was an entry, set hours to the difference between the two
     			//If latest item was an entry, add to user's total hours -> hoursTotal
           var latestItemWasEntry = entries[0].isEntry;
-          var differenceBetweenLast = now - entries[0];
+		  var ms_per_hour = 1000 * 60 * 60;
+          var differenceBetweenLast = (now - entries[0].dateTime) / ms_per_hour;
+		  var newHours = latestItemWasEntry ? differenceBetweenLast : 0;
           login = {
             id: id,
             registerDate: dbuser.registerDate,
             date: truncDate,
             dateTime: now,
             isEntry: !latestItemWasEntry, //if exit, entry - if entry, exit
-            hours: latestItemWasEntry ? differenceBetweenLast : 0
+            hours: newHours
           }
           user.isLeaving = latestItemWasEntry;
-          totalHours = dbuser.totalHours + differenceBetweenLast;
+          totalHours = dbuser.totalHours + newHours;
         }
         else {
           login = {
@@ -114,40 +138,71 @@ privateApi.post('/login', function(req, res) {
           totalHours = dbuser.totalHours;
         }
 
-        //TODO convert totalHours to something pretty
         console.log(totalHours);
-        user.hoursTotal = totalHours;
+        user.hoursTotal = totalHours.toFixedDown(1).toString();
         console.log(login);
+
+		//Update user with new totalHours
+		User.findByIdAndUpdate(dbuser._id, { totalHours: totalHours }, { new: true }, (err, newUser) => {
+			console.log("User updated with new totalHours".yellow);
+			console.log(newUser);
+		});
 
         //Get last entry
         Login.find({ id: id, registerDate: dbuser.registerDate, isEntry: true })
         .sort({dateTime: -1}).limit(1).exec((err, entries) => {
           if (err) { throw err; }
 
-          var lastEntry = entries[0];
-          console.log(lastEntry);
+		  console.log("Get last entry".yellow);
+		  var lastEntry = entries[0];
+		  console.log(lastEntry);
 
-		  //TODO prevent undefined here!		
+		  if (entries.length > 0)
+		  {
 
           //TODO convert lastEntry to pretty time
-          user.lastEntry = lastEntry.dateTime;
+          user.lastEntry = moment(lastEntry.dateTime).calendar();
+	
+		  } else
+          {
+			user.lastEntry = "";
+		  }
 
           //Push new login record to login table
-          login.save((err, newLogin) => {
-            if (err) { throw err; }
+          Login.findOneAndUpdate({ id: id, registerDate: dbuser.registerDate, date: truncDate, dateTime: now },
+			login , { upsert: true, new: true, runValidators: true }, (err, newLogin) => {
+			if (err) { throw err; }
+			console.log("New login entry saved".yellow)
+			console.log(newLogin);
+		  });
+
             //Sum hours of all logins that occured today, including the new one -> hoursToday
       			Login.find({id: id, registerDate: dbuser.registerDate, date: truncDate, isEntry: false}, (err, logins) => {
-              //All exits today
-              var hours = 0;
+              console.log("Get all exits today".yellow);
+			  console.log(logins);
+			  //All exits today
+			  var hoursToday;
+			  if (lastEntry)
+              { hoursToday = lastEntry.hours; }
+			  else { hoursToday = 0; }
+
               for (var i=0; i<logins.length; i++) {
-                hours += logins.hours;
+               	hoursToday = hoursToday + logins[i].hours;
               }
-              user.hoursToday = hours;
-              //Done!
-        			res.send(user);
-            });
-          });
-        });
+
+			  setTimeout(() => {
+				
+				var minutesToday = hoursToday * 60;
+				var hoursTodayString = Math.floor(hoursToday).toString() + ":" + ((minutesToday % 60) < 10 ? "0" : "")
+				 + Math.floor(minutesToday % 60).toString()
+				user.hoursToday = hoursTodayString;				
+
+				console.log("Return user".yellow);
+				console.log(user);
+				res.send(user);
+			  }, 100);
+            }); //login.find
+        }); //login.find
 			});
 		});
 

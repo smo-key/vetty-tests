@@ -87,6 +87,18 @@ exports.deleteID = function(id) {
 	}));
 }
 
+exports.deleteAll = function() {
+    return (new Promise(function(resolve, reject){
+        fps.deleteAll().then(function() {
+            console.log("All IDs deleted!");
+            resolve();
+        }, function(err) {
+			console.log("No IDs to delete!");
+            resolve();
+        });
+    }));
+}
+
 exports.enroll = function(ID) {
     return (new Promise(function(resolve, reject) {
       var errorHandler = function(err) {

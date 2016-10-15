@@ -804,10 +804,10 @@ def ui_login():
 			#user = {}
 			#user["firstName"] = "Arthur"
 			#user["lastName"] = "Pachachura"
-			user["hoursToday"] = "2:40"
-			user["hoursTotal"] = "263"
-			user["lastEntry"] = "3:40 PM today"
-			user["isLeaving"] = False
+			#user["hoursToday"] = "2:40"
+			#user["hoursTotal"] = "263"
+			#user["lastEntry"] = "3:40 PM today"
+			#user["isLeaving"] = False
 
 			white_lt = pygame.Color(255, 255, 255, 200)
 
