@@ -92,9 +92,12 @@ privateApi.post('/led/off', function(req, res) {
 	});
 });
 privateApi.post('/register/1', function(req, res) {
-	_fp.fp.enroll1(2).then(() => {
+	//TODO get next fpId
+	var fpId = 0;
+
+	_fp.fp.enroll1(fpId).then(() => {
 		console.log("Register phase 1 complete")
-		res.send("OK")
+		res.send("OK " + fpId)
 	}, (err) => {
 		res.send(_fp.fp.getError(err));
 	});
@@ -109,9 +112,9 @@ privateApi.post('/register/2', function(req, res) {
 });
 
 privateApi.post('/register/3', function(req, res) {
-	console.log(req.body)
 	_fp.fp.enroll3().then(() => {
-    console.log("Register phase 3 complete")
+	    console.log("Register phase 3 complete")
+		//res.send("OK");
 
 		//Add row to database
 		var user = {
@@ -123,11 +126,12 @@ privateApi.post('/register/3', function(req, res) {
 			logins: [ ],
 			totalHours: 0
 		};
+		console.log(user)
 
 		var predicate = { id: req.body.fpId };
 		
 		//update prevents duplicates and allows overwrite
-		Attendance.findOneAndUpdate(predicate, user, { new: true, upsert: true, runValidators: true }, (err, newRecord) => {
+		User.findOneAndUpdate(predicate, user, { new: true, upsert: true, runValidators: true }, (err, newRecord) => {
 			console.log("Enroll new user".yellow);
 			console.log(newRecord);
 			if (err) {

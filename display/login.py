@@ -17,6 +17,7 @@ import requests
 import subprocess
 import socket
 import evdev
+import json
 
 GAMMA = 2
 COLOR_BLUE900 = pygame.Color(13,71,161).correct_gamma(GAMMA)
@@ -545,6 +546,7 @@ def ui_register():
 	lastName = None
 	stuId = None
 	invalidId = False
+	fpId = None
 	while True:
 		if phase is 0:
 			#Draw animation
@@ -611,7 +613,7 @@ def ui_register():
 			r = None
 			count = 0
 			while count < 3:
-				if ((r is not None) and r.text != "OK"):
+				if ((r is not None) and r.text[:2] != "OK"):
 					count = 0
 					ui_register_fp(count, "Lift finger and try again", "Hold your finger firmly on the pad")
 					update()
@@ -622,9 +624,17 @@ def ui_register():
 					elif count is 2:
 						ui_register_fp(count, "Rotate finger slightly right and place", "Hold finger firmly on the pad")
 					update()
-				r = requests.post('http://localhost:8002/register/' + str(int(count + 1)), data={ })
-				#print r.text
-				if (r.text == "OK"):
+				data = { }
+				headers = {'Content-Type': 'application/json'}
+				if count is 2:
+					data = { "firstName": firstName, "lastName": lastName, "studentId": stuId, "fpId": fpId }
+				r = requests.post('http://localhost:8002/register/' + str(int(count + 1)), headers=headers, data=json.dumps(data))
+				print data
+				print r.text
+				if (r.text[:2] == "OK"):
+					if count is 0:
+						fpId = r.text[3:]
+						print "Fingerprint ID: " + str(fpId)
 					count += 1
 					ui_register_fp(count - 0.5, "Lift your finger now", "")
 					update()
