@@ -55,10 +55,10 @@ publicApi.post('/api/users/list', function(req, res) {
 
 privateApi.post('/login', function(req, res) {
 	_fp.fp.identify().then((id) => {
-		
+
 		var user = { };
 		user.ok = true;
-		
+
 		User.findOne({id: id}, function(err, dbuser) {
 			if (err) { console.error(err); }
 			console.log(dbuser);
@@ -67,32 +67,89 @@ privateApi.post('/login', function(req, res) {
 			user.id = id.toString();
 			user.studentId = dbuser.studentId;
 
-			//Get last entry -> lastLogin
-			Login.find({ id: id, registerDate: dbuser.registerDate}).sort({dateTime: 1}).limit(1)
-				.exec((err, entries) {
-				//entries = list of all entries
-			});		
+			//Get last entry and exit today -> lastLogin
+      var now = Date.now();
+      var truncDate = new Date(now.year, now.month, now.day);
+			Login.find({ id: id, registerDate: dbuser.registerDate, date: truncDate })
+      .sort({dateTime: -1}).limit(2).exec((err, entries) {
+        if (err) { throw err; }
+				//entries will either contain [ exit, entry ], [ entry, entry ], [entry], or [ ]
 
+        console.log(entries);
 
-			//If last entry was today, isLeaving -> true, false otherwise
-			
-			//Create new login record - set all properties
-			//If last entry was today, set hours to the difference between the two
-			//If last entry was today, add to user's total hours -> hoursTotal
+        var login;
+        var totalHours;
+        if (entries.length > 0)
+        {
+          //Create new login record - set all properties
+    			//If latest item was an entry, set hours to the difference between the two
+    			//If latest item was an entry, add to user's total hours -> hoursTotal
+          var latestItemWasEntry = entries[0].isEntry;
+          var differenceBetweenLast = now - entries[0];
+          login = {
+            id: id,
+            registerDate: dbuser.registerDate,
+            date: truncDate,
+            dateTime: now,
+            isEntry: !latestItemWasEntry, //if exit, entry - if entry, exit
+            hours: latestItemWasEntry ? differenceBetweenLast : 0
+          }
+          user.isLeaving = latestItemWasEntry;
+          totalHours = dbuser.totalHours + differenceBetweenLast;
+        }
+        else {
+          login = {
+            id: id,
+            registerDate: dbuser.registerDate,
+            date: truncDate,
+            dateTime: now,
+            isEntry: true,
+            hours: 0
+          }
+          user.isLeaving = false;
+          totalHours = dbuser.totalHours;
+        }
 
-			//Push new login record to login table
+        //TODO convert totalHours to something pretty
+        console.log(totalHours);
+        user.hoursTotal = totalHours;
+        console.log(login);
 
-			//Sum hours of all logins that occured today, including the new one -> hoursToday
-			//Login.find({id: id, registerDate: dbuser.registerDate}, 
+        //Get last entry
+        Login.find({ id: id, registerDate: dbuser.registerDate, isEntry: true })
+        .sort({dateTime: -1}).limit(1).exec((err, entries) {
+          if (err) { throw err; }
 
-			res.send(user);
+          var lastEntry = entries[0];
+          console.log(lastEntry);
+
+          //TODO convert lastEntry to pretty time
+          user.lastEntry = lastEntry.dateTime;
+
+          //Push new login record to login table
+          login.save((err, newLogin) {
+            if (err) { throw err; }
+            //Sum hours of all logins that occured today, including the new one -> hoursToday
+      			Login.find({id: id, registerDate: dbuser.registerDate, date: truncDate, isEntry: false), (err, logins) {
+              //All exits today
+              var hours = 0;
+              for (var i=0; i<logins.length; i++) {
+                hours += logins.hours;
+              }
+              user.hoursToday = hours;
+              //Done!
+        			res.send(user);
+            });
+          });
+        });
+			});
 		});
 
 		//res.send("OK " + id);
 	}, (err) => {
 		res.send({ ok: false, error: _fp.fp.getError(err)});
 	});
-	
+
 	//TODO respond with OK if successful then id, firstName, lastName, hoursToday,
 	//hoursTotal, lastEntry, and isLeaving
 });
@@ -172,7 +229,7 @@ privateApi.post('/register/3', function(req, res) {
 		console.log(user)
 
 		var predicate = { id: req.body.fpId };
-		
+
 		//update prevents duplicates and allows overwrite
 		User.findOneAndUpdate(predicate, user, { new: true, upsert: true, runValidators: true }, (err, newRecord) => {
 			console.log("Enroll new user".yellow);

@@ -24,9 +24,20 @@ module.exports = function (Schema, mongoose) {
         message: "Date is invalid"
       }
     },
+    dateTime: {
+      type: Date,
+      validate: {
+        validator: (y) => { return y > new Date(2016, 1, 1)},
+        message: "Date is invalid"
+      }
+    },
+    isEntry: {
+      type: Boolean,
+      default: true
+    },
     hours: {
       type: Number,
-      default: 0
+      default: 0 //only non-zero on exits (isEntry = false)
     }
   });
 

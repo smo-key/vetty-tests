@@ -32,10 +32,10 @@ module.exports = function (Schema, mongoose) {
         message: "Register date is invalid"
       }
     },
-    logins: [{ type: Schema.Types.ObjectId, ref: "Login" }],
+    //logins: [{ type: Schema.Types.ObjectId, ref: "Login" }],
     totalHours: { type: Number, default: 0 }
   });
   userSchema.index({ id: 1 });
-  
+
   return mongoose.model('User', userSchema);
 };
