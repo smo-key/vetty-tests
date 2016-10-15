@@ -27,6 +27,7 @@ mongoose.connect("mongodb://localhost:27017/vetty", { config: { autoIndex: false
 //Load schema
 var Schema = mongoose.Schema;
     User = require('./db/user.js')(Schema, mongoose);
+	Login = require('./db/login.js')(Schema, mongoose);
 
 //Connect to database
 var db = mongoose.connection;
@@ -53,15 +54,47 @@ publicApi.post('/api/users/list', function(req, res) {
 /** PRIVATE (PYTHON) API - called from Python server **/
 
 privateApi.post('/login', function(req, res) {
-	var fpId = req.body.fpId;
-
 	_fp.fp.identify().then((id) => {
-		res.send("OK " + id);
-	}, (err) => {
-		res.send(_fp.fp.getError(err));
-	});
+		
+		var user = { };
+		user.ok = true;
+		
+		User.findOne({id: id}, function(err, dbuser) {
+			if (err) { console.error(err); }
+			console.log(dbuser);
+			user.firstName = dbuser.firstName;
+			user.lastName = dbuser.lastName;
+			user.id = id.toString();
+			user.studentId = dbuser.studentId;
 
-	//TODO Respond with successful?, message, out?, timeIn, timeOut, hours, name, userId
+			//Get last entry -> lastLogin
+			Login.find({ id: id, registerDate: dbuser.registerDate}).sort({dateTime: 1}).limit(1)
+				.exec((err, entries) {
+				//entries = list of all entries
+			});		
+
+
+			//If last entry was today, isLeaving -> true, false otherwise
+			
+			//Create new login record - set all properties
+			//If last entry was today, set hours to the difference between the two
+			//If last entry was today, add to user's total hours -> hoursTotal
+
+			//Push new login record to login table
+
+			//Sum hours of all logins that occured today, including the new one -> hoursToday
+			//Login.find({id: id, registerDate: dbuser.registerDate}, 
+
+			res.send(user);
+		});
+
+		//res.send("OK " + id);
+	}, (err) => {
+		res.send({ ok: false, error: _fp.fp.getError(err)});
+	});
+	
+	//TODO respond with OK if successful then id, firstName, lastName, hoursToday,
+	//hoursTotal, lastEntry, and isLeaving
 });
 
 privateApi.get('/pressed', function(req, res) {

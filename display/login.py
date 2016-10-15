@@ -736,6 +736,7 @@ def ui_login():
 			bgcolor = COLOR_BLUE900
 			start = timer()
 			bigstart = timer()
+			user = { } #output data
 			while True:
 				p = False #fp pressed
 				t = False #touchscreen touched
@@ -784,8 +785,10 @@ def ui_login():
 					r = requests.post('http://localhost:8002/login', data={ })
 					print r.text
 					start = timer()
-					if (r.text[:2] == "OK"):
-						id = int(r.text[3:])
+					if (r.json()["ok"] == True):
+						user = r.json()
+						print user
+						id = user["id"]
 						print "Logged in as " + str(id)
 
 						#Go to success screen
@@ -798,9 +801,9 @@ def ui_login():
 			#Success!
 			ui_clear(COLOR_GREEN800)
 
-			user = {}
-			user["firstName"] = "Arthur"
-			user["lastName"] = "Pachachura"
+			#user = {}
+			#user["firstName"] = "Arthur"
+			#user["lastName"] = "Pachachura"
 			user["hoursToday"] = "2:40"
 			user["hoursTotal"] = "263"
 			user["lastEntry"] = "3:40 PM today"
