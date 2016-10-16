@@ -1,0 +1,158 @@
+<link rel="import" href="../lib/polymer/polymer.html">
+<link rel="import" href="../lib/iron-pages/iron-pages.html">
+<link rel="import" href="../lib/iron-icon/iron-icon.html">
+<link rel="import" href="../lib/paper-card/paper-card.html">
+<link rel="import" href="../lib/paper-input/paper-input.html">
+<link rel="import" href="../lib/paper-listbox/paper-listbox.html">
+<link rel="import" href="../lib/paper-item/paper-item.html">
+<link rel="import" href="../lib/paper-styles/color.html">
+<link rel="import" href="../lib/paper-button/paper-button.html">
+<link rel="import" href="../lib/paper-header-panel/paper-header-panel.html">
+<link rel="import" href="../lib/paper-icon-button/paper-icon-button.html">
+<link rel="import" href="../lib/paper-tabs/paper-tabs.html">
+<link rel="import" href="../lib/paper-dialog/paper-dialog.html">
+<link rel="import" href="../lib/paper-toolbar/paper-toolbar.html">
+<link rel="import" href="../lib/neon-animation/neon-animations.html">
+<link rel="import" href="./mdi.html">
+
+<dom-module id="vetty-user">
+  <template>
+    <style>
+      :host {
+        display: block;
+        font-family: 'Roboto', 'Noto', "Helvetica Neue", Helvetica, arial, sans-serif;
+
+        --paper-tab-ink: var(--paper-blue-200);
+
+        --flex-center: {
+          display: -webkit-box;
+          display: -moz-box;
+          display: -ms-flexbox;
+          display: -webkit-flex;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+      }
+
+      paper-button {
+        border-radius: 0;
+      }
+      paper-button iron-icon {
+        padding-right: 6px;
+      }
+
+      paper-card.table-row
+      {
+        height: 48px;
+        width: 100%;
+        overflow: hidden;
+        transition: background-color 0.4s;
+        padding: 0;
+        margin: 0;
+        @apply(--flex-center);
+        justify-content: space-around;
+        border-radius: 0;
+        background-color: var(--paper-blue-700);
+        color: #fff;
+      }
+      div.table-row-container
+      {
+        @apply(--flex-center);
+        justify-content: space-around;
+        height: 48px;
+      }
+      @media (max-width: 769px)
+      {
+        div.table-row-container {
+            width: 100%;
+        }
+      }
+      div.col
+      {
+        height: 100%;
+        @apply(--flex-center);
+        justify-content: flex-start;
+        padding-left: 6px!important;
+        padding-right: 6px!important;
+      }
+      div.col.center
+      {
+        justify-content: center;
+      }
+
+      paper-dialog.deleteDialog {
+        border: 3px solid;
+        border-color: white;
+        background-color: var(--paper-red-500);
+        color: white;
+      }
+      paper-dialog.deleteDialog paper-button {
+        color: white;
+      }
+
+      paper-card.table-row[disabled] {
+        background-color: var(--paper-grey-300)!important;
+        color: var(--paper-grey-700)!important;
+      }
+      paper-card.table-row[disabled] paper-icon-button {
+        color: var(--paper-grey-700)!important;
+      }
+    </style>
+
+    <paper-card id="user{{user.id}}" class="table-row row noselect" style="background-color: white; color: #000">
+      <div class="container table-row-container">
+        <div class="col col-xs-12" style="padding: 0; max-width:60px">
+          {{user.id}}
+        </div>
+        <div class="col col-xs-12" style="padding: 0;">
+          {{user.lastName}}
+        </div>
+        <div class="col col-xs-12" style="padding: 0;">
+          {{user.firstName}}
+        </div>
+        <div class="col col-xs-12" style="padding: 0;max-width:120px">
+          {{user.studentId}}
+        </div>
+        <div class="col col-xs-12" style="padding: 0;max-width:100px">
+          {{user.totalHours}}
+        </div>
+        <div class="col col-xs-1" style="min-width:52px;padding:0">
+          <paper-icon-button icon="mdi:delete" on-tap="openDeleteDialog" style="color:#D32F2F"></paper-icon-button>
+        </div>
+      </div>
+    </paper-card>
+    <paper-dialog id="deleteDialog{{user.id}}" class="deleteDialog" entry-animation="scale-up-animation" exit-animation="fade-out-animation" with-backdrop>
+      <h2>Delete User?</h2>
+      <p><span style="font-weight: 900">DANGER!</span> Deleting a user is irreversible. Are you sure you want to completely remove <span style="font-weight: 900">{{user.firstName}} {{user.lastName}}</span>?</p>
+      <div class="buttons">
+        <paper-button dialog-dismiss autofocus>Cancel</paper-button>
+        <paper-button dialog-confirm on-tap="deleteUser">Destroy</paper-button>
+      </div>
+    </paper-dialog>
+
+  </template>
+
+  <script>
+    Polymer({
+      is: 'vetty-user',
+      properties: {
+        user: Object,
+        deleted: { type: Boolean, value: false, notify: true, reflectToAttribute: true }
+      },
+      openDeleteDialog: function() {
+        document.querySelector('#deleteDialog' + this.user.id).open();
+      },
+      deleteUser: function() {
+        jQuery.post("http://10.42.0.231:8001/api/users/delete", { userId: this.user.id }, function(data, status, jqXHR) {
+          console.log(status);
+          if (status == 200)
+          {
+            document.querySelector('#user' + this.user.id).setAttribute('disabled', '');
+            document.querySelector('#user' + this.user.id + " paper-icon-button").setAttribute('disabled', '');
+          }
+        });
+      }
+    });
+  </script>
+</dom-module>

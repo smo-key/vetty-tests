@@ -49,8 +49,8 @@ db.once('open', () => {
 
 publicApi.post('/api/users/delete', function(req, res) {
 	var userId = req.body.userId;
-	var fpId = req.body.fpId;
-	var adminToken = req.body.token;
+
+  
 
 	//TODO make sure to delete from fingerprint sensor
 });
@@ -170,7 +170,7 @@ privateApi.post('/login', function(req, res) {
 
           //TODO convert lastEntry to pretty time
           user.lastEntry = moment(lastEntry.dateTime).calendar();
-	
+
 		  } else
           {
 			user.lastEntry = "";
@@ -199,11 +199,11 @@ privateApi.post('/login', function(req, res) {
               }
 
 			  setTimeout(() => {
-				
+
 				var minutesToday = hoursToday * 60;
 				var hoursTodayString = Math.floor(hoursToday).toString() + ":" + ((minutesToday % 60) < 10 ? "0" : "")
 				 + Math.floor(minutesToday % 60).toString()
-				user.hoursToday = hoursTodayString;				
+				user.hoursToday = hoursTodayString;
 
 				console.log("Return user".yellow);
 				console.log(user);
