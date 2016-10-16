@@ -1,6 +1,7 @@
 # Custom
 node_modules/
 *.txt
+fingerprint
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
