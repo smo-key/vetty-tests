@@ -18,6 +18,9 @@ publicApi.use(bodyParser.json());
 publicApi.use(bodyParser.urlencoded({ extended: true }));
 privateApi.use(bodyParser.json());
 
+/** WEB SERVER **/
+publicApi.use('/', express.static(__dirname + '/../web/build/bundled'));
+
 /** UTIL **/
 Number.prototype.toFixedDown = function(digits) {
     var re = new RegExp("(\\d+\\.\\d{" + digits + "})(\\d)"),
@@ -52,7 +55,6 @@ publicApi.post('/api/users/delete', function(req, res) {
 	console.log(req.body);
 	var userId = req.body.userId;
 	console.log("User ID: " + userId);
-	res.header('Access-Control-Allow-Origin', 'http://10.42.0.231:5000');
 
 	//Remove user from database
 	User.findOneAndRemove({ id: userId }, (err, user) => {
@@ -73,7 +75,6 @@ publicApi.post('/api/users/delete', function(req, res) {
 });
 
 publicApi.get('/api/users/list', function(req, res) {
-	res.header('Access-Control-Allow-Origin', 'http://10.42.0.231:5000');
 	User.find({}).sort({ id: 1 }).exec((err, users) => {
 		for (var i=0; i<users.length; i++)
 		{

@@ -1,0 +1,7 @@
+{
+  "entrypoint": "index.html",
+  "shell": "src/vetty-app.html",
+  "fragments": [
+    "src/vetty-user.html"
+  ]
+}
