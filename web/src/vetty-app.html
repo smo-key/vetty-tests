@@ -202,12 +202,12 @@
             <span class="title">Vetty Admin Panel</span>
             <div class="spacer"></div>
             <span style="margin-right:8px;">Logged in as <span style="font-weight: 900;">LASA Robotics</span></span>
-            <paper-icon-button style="position:relative;top:1px" icon="mdi:logout-variant"></paper-icon-button>
+            <!--<paper-icon-button style="position:relative;top:1px" icon="mdi:logout-variant"></paper-icon-button>-->
             <paper-tabs class="bottom" selected="{{subpage}}" attr-for-selected="name">
               <paper-tab name="users">Users</paper-tab>
               <!--<paper-tab name="log">Entry Log</paper-tab>-->
-              <paper-tab name="admins">Admins</paper-tab>
-              <paper-tab name="settings">Settings</paper-tab>
+              <!--<paper-tab name="admins">Admins</paper-tab>-->
+              <!--<paper-tab name="settings">Settings</paper-tab>-->
             </paper-tabs>
           </paper-toolbar>
         </paper-header-panel>
@@ -388,7 +388,7 @@
         //get users and admins
     		const self = this;
     		console.log("Get users");
-		    jQuery.getJSON("http://10.42.0.231:8001/api/users/list", function(data) {
+		    jQuery.getJSON(document.location.origin + "/api/users/list", function(data) {
           self.set("users", data);
 			    console.log(data);
         });

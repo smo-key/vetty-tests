@@ -6,16 +6,27 @@ var request = require('request');
 var assert = require('assert');
 var colors = require('colors');
 var moment = require('moment');
+var basicAuth = require('basic-auth-connect');
 
 var _fp = { }
 _fp.fp = require('./fingerprint.js');
 
-const publicPort = 8001;
+const publicPort = 80;
 const privatePort = 8002;
+
+//Prepare login config
+//TODO hey, this is pretty terrible security ;)
+console.log("Reading VETTY_USERNAME and VETTY_PASSWORD environment variables");
+var config = {
+  username: process.env.VETTY_USERNAME || "",
+  password: process.env.VETTY_PASSWORD || ""
+};
 
 //Process JSON
 publicApi.use(bodyParser.json());
 publicApi.use(bodyParser.urlencoded({ extended: true }));
+publicApi.use(basicAuth(config.username, config.password)); //terrible, I know....
+
 privateApi.use(bodyParser.json());
 
 /** WEB SERVER **/
