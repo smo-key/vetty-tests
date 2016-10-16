@@ -205,7 +205,9 @@
             <paper-icon-button style="position:relative;top:1px" icon="mdi:logout-variant"></paper-icon-button>
             <paper-tabs class="bottom" selected="{{subpage}}" attr-for-selected="name">
               <paper-tab name="users">Users</paper-tab>
-              <paper-tab name="admins">Admins</paper-tab>
+              <paper-tab name="log">Entry Log</paper-tab>
+              <!--<paper-tab name="admins">Admins</paper-tab>-->
+              <paper-tab name="settings">Settings</paper-tab>
             </paper-tabs>
           </paper-toolbar>
         </paper-header-panel>
@@ -253,7 +255,7 @@
           </div>
 
           <!-- ADMINS -->
-          <div class="main-subpage" name="admins">
+          <div class="main-subpage" name="log">
             <paper-card class="table-row row noselect">
               <div class="container table-row-container">
                 <div class="col col-xs-12" style="padding: 0;" on-tap="sortUsersByLast">
@@ -286,6 +288,10 @@
           </div>
         </iron-pages>
 
+        <div class="main-subpage" name="settings">
+          
+        </div>
+
         <div class="copyright" style="color: #666666">
           Copyright (C) 2016 Arthur Pachachura
         </div>
@@ -316,8 +322,8 @@
         },
         users: {
           type: Array,
-          value: [ { id: 1, firstName: "Arthur", lastName: "Pachachura", totalHours: 12.3, studentId: "1234567"},
-          { id: 2, firstName: "Bacon", lastName: "Apples", totalHours: 4.1, studentId: "2110698"}   ]
+          //value: [ { id: 1, firstName: "Arthur", lastName: "Pachachura", totalHours: 12.3, studentId: "1234567"},
+          //{ id: 2, firstName: "Bacon", lastName: "Apples", totalHours: 4.1, studentId: "2110698"}   ]
         },
         admins: {
           type: Array,
@@ -342,11 +348,11 @@
       sortUsersFirst: function(a, b) {
           return a.firstName.localeCompare(b.firstName);
       },
-      sortUsersStuID: function(a, b) {
+      sortUsersHours: function(a, b) {
           return b.totalHours - a.totalHours;
       },
-      sortUsersHours: function(a, b) {
-          return a.studentId - b.studentId;
+      sortUsersStuID: function(a, b) {
+          return !b.studentId ? -1 : a.studentId.localeCompare(b.studentId);
       },
       isSortUsersID: function(sortUsers) {
         return sortUsers == 'sortUsersID';

@@ -15,6 +15,7 @@ const privatePort = 8002;
 
 //Process JSON
 publicApi.use(bodyParser.json());
+publicApi.use(bodyParser.urlencoded({ extended: true }));
 privateApi.use(bodyParser.json());
 
 /** UTIL **/
@@ -48,11 +49,27 @@ db.once('open', () => {
 /** PUBLIC (END-USER) API **/
 
 publicApi.post('/api/users/delete', function(req, res) {
+	console.log(req.body);
 	var userId = req.body.userId;
+	console.log("User ID: " + userId);
+	res.header('Access-Control-Allow-Origin', 'http://10.42.0.231:5000');
 
-  
-
-	//TODO make sure to delete from fingerprint sensor
+	//Remove user from database
+	User.findOneAndRemove({ id: userId }, (err, user) => {
+		if (err) { console.error(err); }
+		console.log("Delete user".yellow)
+		console.log(user);
+	});
+	//Remove all associated logins
+	Login.remove({ id: userId }, (err) => {
+		if (err) { console.error(err); }
+		console.log("Remove user logins".yellow)
+	});
+	//Delete from fingerprint sensor
+	_fp.fp.deleteID(userId).then(() => {
+		console.log("Removed user from fingerprint sensor".yellow)
+		res.send({ ok: true });
+	});
 });
 
 publicApi.get('/api/users/list', function(req, res) {
@@ -173,7 +190,7 @@ privateApi.post('/login', function(req, res) {
 
 		  } else
           {
-			user.lastEntry = "";
+			user.lastEntry = "never";
 		  }
 
           //Push new login record to login table

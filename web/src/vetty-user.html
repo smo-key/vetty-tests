@@ -144,12 +144,13 @@
         document.querySelector('#deleteDialog' + this.user.id).open();
       },
       deleteUser: function() {
+		const self = this;
         jQuery.post("http://10.42.0.231:8001/api/users/delete", { userId: this.user.id }, function(data, status, jqXHR) {
           console.log(status);
-          if (status == 200)
+          if (status == "success")
           {
-            document.querySelector('#user' + this.user.id).setAttribute('disabled', '');
-            document.querySelector('#user' + this.user.id + " paper-icon-button").setAttribute('disabled', '');
+            document.querySelector('#user' + self.user.id).setAttribute('disabled', '');
+            document.querySelector('#user' + self.user.id + " paper-icon-button").setAttribute('disabled', '');
           }
         });
       }

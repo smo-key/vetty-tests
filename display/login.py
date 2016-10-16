@@ -813,17 +813,19 @@ def ui_login():
 
 			#Draw welcome + name
 			str_name2 = FONT_LT.render(user["firstName"], fgcolor=COLOR_WHITE, size=32)
-			str_name2[1].top = 24
-			
+			str_name2[1].top = 30
+			print str_name2[1].height
+
 			str_name1 = FONT_LT.render(("Goodbye, " if user["isLeaving"] else "Welcome, "), fgcolor=white_lt, size=24)
-			str_name1[1].bottom = str_name2[1].bottom + 4
+			str_name1[1].top = 36
 			str_name1[1].left = 16
 			
 			str_name2[1].left = str_name1[1].right + 6
 
 			str_name3 = FONT_LT.render(user["lastName"], fgcolor=COLOR_WHITE, size=32)
 			str_name3[1].left = str_name2[1].right + 10
-			str_name3[1].bottom = str_name2[1].bottom
+			str_name3[1].top = 30
+			print str_name3[1].height
 
 			#Draw hours
 			str_h1 = FONT_LT.render(user["hoursToday"], fgcolor=COLOR_WHITE, size=36)
